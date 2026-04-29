@@ -50,7 +50,7 @@ static inline int unpack_message(int fd, char *out_msg, int max_len) {
     // Read 4-byte length header
     int n = read(fd, &net_len, HEADER_SIZE);
     if (n <= 0) return n;  // 0 = disconnect, -1 = error
-    if (n < HEADER_SIZE) return -1;  // partial header
+    if (n < HEADER_SIZE) return -1;  // incomplete header
 
     msg_len = ntohl(net_len);
     if (msg_len <= 0 || msg_len >= max_len) return -1;
@@ -67,7 +67,7 @@ static inline int unpack_message(int fd, char *out_msg, int max_len) {
     return msg_len;
 }
 
-/* Send a length-prefixed message */
+// Send a length-prefixed message
 static inline int send_message(int fd, const char *msg) {
     char packet[MAX_MSG_LEN + HEADER_SIZE];
     int total = pack_message(msg, packet, sizeof(packet));
