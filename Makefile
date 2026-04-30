@@ -1,7 +1,7 @@
 # Compiler
 GPP = gcc
 
-# Compilation flags
+# Compilation flags (for developing)
 GPPFlags = -Wall -Wextra -g -O0 -std=c11 -D_POSIX_C_SOURCE=199309L
 
 CLIENT_SRC = ./client.c
