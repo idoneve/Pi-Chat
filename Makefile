@@ -16,30 +16,25 @@ SERVER_OBJ = $(SERVER_SRC:.c=.o)
 TARNAME = final_submission
 
 # Target Name
-TARGET = a.out
+SERVER_TARGET = ./server
+CLIENT_TARGET = ./client
 
-all: client server
+all: client server clean
 
-client: $(CLIENT_TARGET)
-
-server: $(SERVER_TARGET)
-
-# Link
-$(CLIENT_TARGET): $(CLIENT_OBJ)
+client: $(CLIENT_OBJ)
 	$(GPP) $(GPPFlags) $(CLIENT_OBJ) -o $(CLIENT_TARGET) 
-
-$(SERVER_TARGET): $(SERVER_OBJ)
+server: $(SERVER_OBJ)
 	$(GPP) $(GPPFlags) $(SERVER_OBJ) -o $(SERVER_TARGET) 
 
 # Compile
-*.o: %.c
+%.o: %.c
 	$(GPP) $(GPPFlags) -c $< -o $@
 
 .PHONY: clean package
 
 # clean
 clean:
-	rm -f $(TARGET) $(OBJ)
+	rm -f $(SERVER_OBJ) $(CLIENT_OBJ)
 	@echo "Removed all object files."
 
 package:
