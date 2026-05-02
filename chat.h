@@ -51,7 +51,7 @@ static inline int unpack_message(int fd, char *out_msg, int max_len) {
     // Read 4-byte length header
     int n = read(fd, &net_len, HEADER_SIZE);
     if (n <= 0) return n;  // 0 = disconnect, -1 = error
-    if (n < HEADER_SIZE) return -1;  // incomplete header
+    if (n < HEADER_SIZE) return -1;  // Incomplete header
 
     msg_len = ntohl(net_len);
     if (msg_len <= 0 || msg_len >= max_len) return -1;
@@ -80,7 +80,7 @@ static inline int send_message(int fd, const char *msg) {
         if (n <= 0) return n;
         sent += n;
     }
-    return sent - HEADER_SIZE;  // payload bytes sent
+    return sent - HEADER_SIZE;  // Payload bytes sent
 }
 
 #endif

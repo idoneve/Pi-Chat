@@ -1,22 +1,50 @@
 #include "chat.h"
 
+int connect_to_server(char *ip_addr) {
+    // Create socket
+    printf("\t[Client] Creating socket...\n");
+    int socket_fd = socket(AF_INET, SOCK_STREAM, 0);
+    if (socket_fd < 0) {
+        perror("[ERROR] Failed to create socket\n");
+        exit(1);
+    }
+    printf("\t[Client] Socket created\n");
+
+    // Configure socket
+    printf("\t[Client] Configuring socket...\n");
+    struct sockaddr_in addr;
+    addr.sin_family = AF_INET; // Use ipv4
+    addr.sin_port = htons(PORT); // Get port
+    inet_pton(AF_INET, ip_addr, &addr.sin_addr);
+    printf("\t[Client] Socket configured\n");
+
+    // Connect to socket
+    printf("\t[Client] Connecting to socket...\n");
+    if (connect(socket_fd, (struct sockaddr *)&addr, sizeof(addr)) < 0) {
+        perror("[Error] Failed to connect to server");
+        exit(1);
+    }
+    printf("\t[Client] Connected to socket\n");
+
+    return socket_fd;
+}
+
 int main(int argc, char *argv[]) {
-    // arg is the ip address of the server
-    
-    // try to connect to server
-    printf("[Client] trying to connect to server\n");
+    printf("[Client] Trying to connect to server...\n");
+    int socket_fd = connect_to_server(argv[1]); 
+    printf("[Client] Connected to server\n");
 
-    // main loop
+    // Main loop
     while (running) {
-        // read message from stdin
+        // Read message from stdin
 
-        // pack into message format to send to server
+        // Pack into message format to send to server
 
-        // listen for message from server
+        // Listen for message from server
 
-        // unpack and display message
+        // Unpack and display message
 
-        // send kill to server
+        // Send kill to server
     }
 
     return 0;
