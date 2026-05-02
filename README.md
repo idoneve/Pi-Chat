@@ -8,9 +8,18 @@ docker run --rm -it --name pi-chat-dev --memory="4g" --cpus="4" -v $(pwd):/works
 ```
 
 To set up the project and dependencies with arm64 execution (uses emulation on non-arm platforms)
+
+First make sure emulation is set up in docker
+
 ```sh
-$ docker buildx build --platform linux/arm64 -t pi-chat-sim:latest .
-$ docker run --rm -it --name pi-chat-dev --memory="4g" --cpus="4" --platform linux/arm64 -v $(pwd):/workspace pi-chat-sim:latest
+$ docker run --privileged --rm tonistiigi/binfmt --install all
+```
+
+Then build and run the image
+
+```sh
+$ docker buildx build --platform linux/arm64/v8 -t pi-chat-sim:latest .
+$ docker run --rm -it --name pi-chat-dev --memory="4g" --cpus="4" --platform linux/arm64/v8 -v $(pwd):/workspace pi-chat-sim:latest
 ```
 
 ## Compilation
