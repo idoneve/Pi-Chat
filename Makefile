@@ -32,7 +32,7 @@ $(SERVER_TARGET): $(SERVER_OBJ)
 	$(GPP) $(GPPFlags) $(SERVER_OBJ) -o $(SERVER_TARGET) 
 
 # Compile
-*.o: %.c
+%.o: %.c
 	$(GPP) $(GPPFlags) -c $< -o $@
 
 .PHONY: clean package
