@@ -1,4 +1,5 @@
-#pragma once
+#ifndef CHAT_H
+#define CHAT_H
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -11,7 +12,7 @@
 #include <errno.h>
 
 #define PORT            8080
-#define MAX_MSG_LEN     1024
+#define MAX_MSG_LEN     4096
 #define MAX_USERNAME    32
 #define BACKLOG         5
 
@@ -81,3 +82,5 @@ static inline int send_message(int fd, const char *msg) {
     }
     return sent - HEADER_SIZE;  // payload bytes sent
 }
+
+#endif
