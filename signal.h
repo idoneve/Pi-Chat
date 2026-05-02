@@ -1,3 +1,5 @@
+#pragma once
+
 #include "chat.h"
 
 volatile sig_atomic_t running = 1;
