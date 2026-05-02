@@ -31,6 +31,7 @@ int connect_to_server(char *ip_addr) {
 
 int main(int argc, char *argv[]) {
     printf("[Client] Trying to connect to server...\n");
+    setup_signal_handler();
     int socket_fd = connect_to_server(argv[1]); 
     printf("[Client] Connected to server\n");
 
