@@ -1,19 +1,32 @@
 #include "chat.h"
 
-int main(int argc, char* argv[]) {
-    printf("[Server] starting up server...\n");
+volatile sig_atomic_t running = 1;
 
+static void kill_sig(int sig) {
+    (void)sig;
+    running = 0;
+}
+
+void setup_signal_handler(void) {
+    struct sigaction sa;
+    sa.sa_handler = kill_sig;
+    sa.sa_flags = 0;
+    sigemptyset(&sa.sa_mask);
+    sigaction(SIGINT, &sa, NULL);
+}
+
+int start_server() {
     // create socket
-    printf("[Server] creating socket...\n");
+    printf("\t[Server] creating socket...\n");
     int server_fd = socket(AF_INET, SOCK_STREAM, 0);
     if (server_fd < 0) {
         perror("[ERROR] failed to create socket\n");
         exit(1);
     }
-    printf("[Server] socket created\n");
+    printf("\t[Server] socket created\n");
     
     // bind port to socket
-    printf("[Server] binding socket...\n");
+    printf("\t[Server] binding socket...\n");
     struct sockaddr_in addr;
     addr.sin_family = AF_INET; // use ipv4
     addr.sin_addr.s_addr = INADDR_ANY; // listens on all network interfaces
@@ -22,15 +35,23 @@ int main(int argc, char* argv[]) {
         perror("[ERROR] failed to bind socket\n");
         exit(1);
     }
-    printf("[Server] socket binded\n");
+    printf("\t[Server] socket binded\n");
 
     // listen to socket
-    printf("[Server] starting to listen to socket...\n");
+    printf("\t[Server] starting to listen to socket...\n");
     if (listen(server_fd, 16) < 0) {
         perror("[ERROR] failed to listen to socket\n");
         exit(1);
     }
-    printf("[Server] listening to socket\n");
+    printf("\t[Server] listening to socket\n");
+
+    return server_fd;
+}
+
+int main(void) {
+    printf("[Server] starting up server...\n");
+    setup_signal_handler();
+    int server_fd = start_server();
     printf("[Server] server has started\n");
 
     // main loop
