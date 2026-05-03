@@ -53,6 +53,3 @@ dkms.conf
 
 # debug information files
 *.dwo
-
-client
-server
