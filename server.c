@@ -50,8 +50,8 @@ int accept_client(int server_fd) {
 }
 
 int main(void) {
-    int connections[MAX_CONNECTIONS];
     int active_connections = 0;
+    int connections[MAX_CONNECTIONS];
     fd_set read_fds;
 
     printf("[Server] Starting up server...\n");
@@ -72,7 +72,8 @@ int main(void) {
             }
         }
 
-        select(max_fd + 1, &read_fds, NULL, NULL, NULL); // Only proceed if watched fd is ready to read (no blocks)
+        // Only proceed if a watched fd is ready to read (no blocks)
+        select(max_fd + 1, &read_fds, NULL, NULL, NULL); 
 
         // Accept clients
         if (FD_ISSET(server_fd, &read_fds)) {
@@ -92,10 +93,19 @@ int main(void) {
         for (int i = 0; i < active_connections; ++i) {
             if (FD_ISSET(connections[i], &read_fds)) {
                 char buf[HEADER_SIZE + MAX_MSG_LEN];
-                int n = read(connections[i], buf, sizeof(buf));
-
-                if (n <= 0) { // Client disconnected
-
+                ssize_t message_size = read(connections[i], buf, sizeof(buf));
+                if (message_size <= 0) {
+                    // Client disconnected
+                    close(connections[i]);
+                    connections[i] = connections[--active_connections]; // Copy last fd into dead fd and shrinks active_connections
+                    printf("[Server] Client disconnected\n");
+                } else {
+                    // Broadcast message to everyone else
+                    for (int j = 0; j < active_connections; ++j) {
+                        if (i != j) {
+                            write(connections[j], buf, message_size);
+                        }
+                    }
                 }
             }
         }
