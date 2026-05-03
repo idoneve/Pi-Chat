@@ -49,7 +49,7 @@ static inline int unpack_message(int fd, char *out_msg, int max_len) {
     int msg_len;
 
     // Read 4-byte length header
-    int n = read(fd, &net_len, HEADER_SIZE);
+    int n = recv(fd, &net_len, HEADER_SIZE, 0);
     if (n <= 0) return n;  // 0 = disconnect, -1 = error
     if (n < HEADER_SIZE) return -1;  // Incomplete header
 
@@ -59,7 +59,7 @@ static inline int unpack_message(int fd, char *out_msg, int max_len) {
     // Read the actual message
     int total = 0;
     while (total < msg_len) {
-        n = read(fd, out_msg + total, msg_len - total);
+        n = recv(fd, out_msg + total, msg_len - total, 0);
         if (n <= 0) return n;
         total += n;
     }
@@ -76,7 +76,7 @@ static inline int send_message(int fd, const char *msg) {
 
     int sent = 0;
     while (sent < total) {
-        int n = write(fd, packet + sent, total - sent);
+        int n = send(fd, packet + sent, total - sent, 0);
         if (n <= 0) return n;
         sent += n;
     }
