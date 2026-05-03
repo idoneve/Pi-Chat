@@ -5,7 +5,7 @@
 #include <sys/socket.h>
 #include <unistd.h>
 
-int connect_to_server(char* ip_addr) {
+int connect_to_server(char *ip_addr) {
     // Create socket
     printf("\t[Client] Creating socket...\n");
     int socket_fd = socket(AF_INET, SOCK_STREAM, 0);
@@ -25,7 +25,7 @@ int connect_to_server(char* ip_addr) {
 
     // Connect to socket
     printf("\t[Client] Connecting to socket...\n");
-    if (connect(socket_fd, (struct sockaddr*)&addr, sizeof(addr)) < 0) {
+    if (connect(socket_fd, (struct sockaddr *)&addr, sizeof(addr)) < 0) {
         perror("[Error] Failed to connect to server");
         exit(1);
     }
@@ -34,7 +34,7 @@ int connect_to_server(char* ip_addr) {
     return socket_fd;
 }
 
-int main(int argc, char* argv[]) {
+int main(int argc, char *argv[]) {
     if (argc < 2) {
         perror("IP address of server must be provided as first argument");
         return 1;
