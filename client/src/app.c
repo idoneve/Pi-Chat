@@ -55,7 +55,6 @@ AppResources load_resources(Font* fonts, size_t font_count) {
         exit(1);
     }
 
-
     return (AppResources) {
         .profilePicture = LoadTexture("resources/profile-picture.png"),
         .fonts = { .data = fonts, .len = font_count },
@@ -110,45 +109,10 @@ Clay_RenderCommandArray get_layout(const AppResources* resources, const AppModel
             .padding = CLAY_PADDING_ALL(16),
             .childGap = 16 },
         .backgroundColor = { 250, 250, 255, 255 } }) {
-        CLAY({ .id = CLAY_ID("SideBar"),
-            .layout = { .layoutDirection = CLAY_TOP_TO_BOTTOM,
-                .sizing = { .width = CLAY_SIZING_FIXED(300), .height = CLAY_SIZING_GROW(0) },
-                .padding = CLAY_PADDING_ALL(16),
-                .childGap = 16 },
-            .backgroundColor = COLOR_LIGHT,
-            // Scrolling
-            .clip = { .horizontal = true, .childOffset = Clay_GetScrollOffset() } }) {
 
-            CLAY({ .id = CLAY_ID("ProfilePictureOuter"),
-                .layout = { .sizing = { .width = CLAY_SIZING_GROW(0) },
-                    .padding = CLAY_PADDING_ALL(16),
-                    .childGap = 16,
-                    .childAlignment = { .y = CLAY_ALIGN_Y_CENTER } },
-                .backgroundColor = COLOR_RED }) {
+        side_bar(model);
 
-                CLAY({ .id = CLAY_ID("ProfilePicture"),
-                    .layout = { .sizing
-                        = { .width = CLAY_SIZING_FIXED(60), .height = CLAY_SIZING_FIXED(60) } },
-                    .image = { .imageData = (Texture2D*)(&resources->profilePicture) } }) { }
-
-                CLAY_TEXT(CLAY_STRING("Clay - UI Library"),
-                    CLAY_TEXT_CONFIG({ .fontSize = 24,
-                        .letterSpacing = 1,
-                        .textColor = { 255, 255, 255, 255 } }));
-            }
-
-            // Standard C code like loops etc work inside components
-            for (size_t i = 0; i < model->tabs.len; i++) {
-                connection_tab(&model->tabs.data[i]);
-            }
-        }
-
-        CLAY({ .id = CLAY_ID("MainContent"),
-            .layout = { .sizing = { .width = CLAY_SIZING_GROW(0), .height = CLAY_SIZING_GROW(0) } },
-            .backgroundColor = COLOR_LIGHT }) {
-            CLAY_TEXT(CLAY_STRING("Hello"),
-                CLAY_TEXT_CONFIG({ .fontSize = 16, .letterSpacing = 1, .textColor = COLOR_RED }));
-        }
+        chat_window(model);
     }
 
     // All clay layouts are declared between Clay_BeginLayout and Clay_EndLayout

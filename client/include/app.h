@@ -61,6 +61,7 @@ typedef struct {
     struct {
         Connection* data;
         size_t len;
+        size_t selected;
     } connections;
     struct {
         TabModel* data;

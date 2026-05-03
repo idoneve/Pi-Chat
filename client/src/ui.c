@@ -19,10 +19,21 @@ int start_ui_app(int socket_fd) {
     printf("[CLIENT] Loading Resources\n");
     AppResources resources = load_resources(fonts, 2);
 
+    Message messages1[5] = {
+        (Message) { .source = NULL, .content = { "Test message", 12 } },
+        (Message) { .source = "192.168.0.255", .content = { .data = "Does this", .len = 9 } },
+        (Message) { .source = "192.168.0.255", .content = { "Work", 4 } },
+        (Message) { .source = NULL, .content = { "I think", 7 } },
+        (Message) { .source = NULL, .content = { "but who freakin knows", 21 } },
+    };
+
     // ---  DEBUG DATA ---
     Connection connections[2] = {
-        (Connection) { .messages = NULL, .dest = "192.168.0.255", .is_active = true },
-        (Connection) { .messages = NULL, .dest = "192.168.0.250", .is_active = false },
+        (Connection) { .messages = {
+            .data = messages1,
+            .len = 5,
+        }, .dest = "192.168.0.255", .is_active = true },
+        (Connection) { .messages = {}, .dest = "192.168.0.250", .is_active = false },
     };
     AppModel model = { .connections = { .data = connections, .len = 2 } };
 
