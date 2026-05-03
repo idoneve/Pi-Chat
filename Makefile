@@ -13,6 +13,7 @@ HEADER = $(wildcard *.h)
 SERVER_OBJ = $(SERVER_SRC:.c=.o)
 
 TARNAME = final_submission
+SERVER_TARGET = server.out
 
 all: client server
 
