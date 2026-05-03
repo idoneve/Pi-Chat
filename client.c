@@ -36,7 +36,7 @@ int connect_to_server(char* ip_addr) {
 
 int main(int argc, char* argv[]) {
     if (argc < 2) {
-        printf("Ip address of server must be provided as first argument");
+        perror("IP address of server must be provided as first argument");
         return 1;
     }
 
@@ -45,27 +45,20 @@ int main(int argc, char* argv[]) {
     int socket_fd = connect_to_server(argv[1]);
     printf("[Client] Connected to server\n");
 
-    int max_msg_len = MAX_MSG_LEN;
     char message_buf[MAX_MSG_LEN + 1];
     while (running) {
         // Read message from stdin
         printf("\nEnter Message: ");
-
         if (fgets(message_buf, MAX_MSG_LEN, stdin) == NULL) {
-            printf("[Client] Message too long.\n\tMax Length: %d characters\n", MAX_MSG_LEN - 1);
+            printf("[ERROR] Message too long: Max Length: %d characters\n", MAX_MSG_LEN - HEADER_SIZE);
             continue;
         }
+        printf("[Client] User input recieved\n");
 
-        printf("[Debug] user input accepted\n");
-
-        message_buf[strcspn(message_buf, "\n")] = 0;
-
-        printf("[Client] Sending Message %s\n", message_buf);
-
-        // Pack into message format to send to server
-
+        // Send message to server
+        message_buf[strcspn(message_buf, "\n")] = 0; // add terminator at end of line
+        printf("[Client] Sending Message %s to %s...\n", message_buf, argv[1]);
         send_message(socket_fd, message_buf);
-
         printf("[Client] Message Sent\n");
 
         // Listen for message from server
@@ -77,7 +70,7 @@ int main(int argc, char* argv[]) {
         printf("[Client] Listening for server...\n");
         int msg_len;
         if ((msg_len = unpack_message(socket_fd, message_buf, MAX_MSG_LEN)) < 0) {
-            printf("[Client] Failed to unpack message. Server Connection may have closed\n");
+            perror("[ERROR] Failed to unpack message. Server Connection may have closed\n");
             return 1;
         }
         message_buf[msg_len] = '\0';

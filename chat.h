@@ -15,6 +15,7 @@
 #define MAX_MSG_LEN     4096
 #define MAX_USERNAME    32
 #define BACKLOG         5
+#define MAX_CONNECTIONS 2
 
 // Message framing: 4-byte length prefix, then payload
 #define HEADER_SIZE     4

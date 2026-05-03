@@ -60,7 +60,7 @@ format:
 	@echo "Formatting complete"
 
 clean:
-	rm -f $(TARGET) $(OBJS) $(DEPS)
+	rm -f client server $(TARGET) $(OBJS) $(DEPS)
 
 clean_all: clean
 	@echo "WARNING: WILL REMOVE dist directory and ANY .zip or tar.gz files in 3 seconds"
