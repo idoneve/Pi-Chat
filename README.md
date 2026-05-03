@@ -23,17 +23,17 @@ $ docker run --rm -it --name pi-chat-dev --memory="4g" --cpus="4" --platform lin
 ```
 
 ## Compilation
-Using make, you can build the client with:
+Using make, you can build the binaries with:
 ```sh
-$ make client
+$ make all
 ```
 
-You can build the server with:
+You can run the server with:
 ```sh
-$ make server
+$ make run_server
 ```
 
-You can make both with
+You can run the client with (IP defaults to localhost):
 ```sh
-$ make
+$ make run_client IP_ADDRESS=127.0.0.1
 ```
