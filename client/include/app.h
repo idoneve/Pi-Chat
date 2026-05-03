@@ -69,7 +69,7 @@ typedef struct {
     } tabs;
 } AppModel;
 
-Clay_RenderCommandArray get_layout(const AppResources* resources, const AppModel* model);
+Clay_RenderCommandArray get_layout(const AppResources* resources, AppModel* model);
 
 void update_app_state(AppState* state);
 

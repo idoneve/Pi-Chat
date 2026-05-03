@@ -3,6 +3,6 @@
 #include "clay.h"
 #include <stddef.h>
 
-void chat_window(const AppModel* model);
+void chat_window(AppModel* model);
 
-void side_bar(const AppModel* model);
+void side_bar(AppModel* model);

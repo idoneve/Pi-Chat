@@ -35,7 +35,8 @@ int start_ui_app(int socket_fd) {
         }, .dest = "192.168.0.255", .is_active = true },
         (Connection) { .messages = {}, .dest = "192.168.0.250", .is_active = false },
     };
-    AppModel model = { .connections = { .data = connections, .len = 2 } };
+
+    AppModel model = { .connections = { .data = connections, .len = 2 }, .tabs = { } };
 
     bool enable_debug_mode = false;
     // -------------------

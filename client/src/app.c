@@ -101,7 +101,7 @@ void update_app_state(AppState* state) {
     Clay_UpdateScrollContainers(true, state->mouse.scroll, state->deltaTime);
 }
 
-Clay_RenderCommandArray get_layout(const AppResources* resources, const AppModel* model) {
+Clay_RenderCommandArray get_layout(const AppResources* resources, AppModel* model) {
     Clay_BeginLayout();
 
     CLAY({ .id = CLAY_ID("OuterContainer"),
@@ -131,27 +131,27 @@ void HandleClayErrors(Clay_ErrorData errorData) {
 }
 
 void update_app_model(AppModel* model) {
-    TabModel* tabs = model->tabs.data;
+    if (model->connections.len != model->tabs.len) {
+        if (model->connections.len == 0)
+            return;
 
-    size_t old_len = 0;
+        if (model->tabs.len > 0)
+            free(model->tabs.data);
 
-    if (tabs == NULL) {
-        model->tabs.data = malloc(sizeof(TabModel) * model->connections.len);
         model->tabs.len = model->connections.len;
-    } else if (model->connections.len > model->tabs.len) {
-        TabModel* old_data = model->tabs.data;
-        old_len = model->tabs.len;
+        model->tabs.data = malloc(sizeof(TabModel) * model->tabs.len);
 
-        model->tabs.data = malloc(sizeof(TabModel) * model->connections.len);
-        model->tabs.len = model->connections.len;
-        memcpy(model->tabs.data, old_data, old_len);
-
-        free(old_data);
+        if (model->tabs.data == NULL) {
+            printf("[CLIENT] [UI] [ERROR] - Failed to allocate tabs data");
+            exit(1);
+        }
     }
 
-    for (size_t i = old_len; i < model->tabs.len; i++) {
-        TabModel* tab = &model->tabs.data[i];
+    TabModel* tabs = model->tabs.data;
+    for (size_t i = 0; i < model->tabs.len; i++) {
+        TabModel* tab = &tabs[i];
         const Connection* connection = &model->connections.data[i];
+
         tab->index = i;
         tab->is_active = connection->is_active;
 
