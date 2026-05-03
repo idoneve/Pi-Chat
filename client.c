@@ -1,5 +1,7 @@
 #include "signal.h"
 
+int connect_to_server(char *);
+
 int connect_to_server(char *ip_addr) {
     // Create socket
     printf("\t[Client] Creating socket...\n");
@@ -61,7 +63,10 @@ int main(int argc, char *argv[]) {
         // Signal from STDIN
         if (FD_ISSET(STDIN_FILENO, &read_fds)) {
             char input[MAX_MSG_LEN];
-            fgets(input, sizeof(input), stdin); // Get input
+            if (fgets(input, sizeof(input), stdin) == NULL) { // Get input
+                perror("[ERROR] Something went wrong reading input\n");
+                break;
+            } 
             input[strcspn(input, "\n")] = '\0'; // Add terminator
             if (send_message(socket_fd, input) < 0) { // Send to server
                 printf("[Client] Failed to send, server may be down\n");
@@ -72,7 +77,7 @@ int main(int argc, char *argv[]) {
         // Signal from server
         if (FD_ISSET(socket_fd, &read_fds)) {
             char message[MAX_MSG_LEN];
-            int message_size = unpack_message(socket_fd, message, sizeof(message));
+            ssize_t message_size = unpack_message(socket_fd, message, sizeof(message));
             if (message_size <= 0) {
                 printf("[Client] Server has disconnected\n");
                 break;

@@ -1,5 +1,8 @@
 #include "signal.h"
 
+int start_server(void);
+int accept_client(int);
+
 int start_server(void) {
     // Create socket
     printf("\t[Server] Creating socket...\n");
@@ -12,10 +15,12 @@ int start_server(void) {
 
     // Bind port to socket
     printf("\t[Server] Binding socket...\n");
+    int opt = 1;
     struct sockaddr_in addr;
     addr.sin_family = AF_INET; // Use IPv4
     addr.sin_addr.s_addr = INADDR_ANY; // Listens on all network interfaces
     addr.sin_port = htons(PORT); // Get port
+    setsockopt(server_fd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)); // Reuse address if needed
     if (bind(server_fd, (struct sockaddr *)&addr, sizeof(addr)) < 0) {
         perror("[ERROR] Failed to bind socket\n");
         exit(1);
@@ -96,7 +101,7 @@ int main(void) {
         // Check clients for messages
         for (int i = 0; i < active_connections; ++i) {
             if (FD_ISSET(connections[i], &read_fds)) {
-                printf("\t[Server] Client (fd %d) is sending a signal...\n", i);
+                printf("\t[Server] Client (fd %d) is sending a signal...\n", connections[i]);
                 char buf[HEADER_SIZE + MAX_MSG_LEN];
                 ssize_t message_size = read(connections[i], buf, sizeof(buf));
                 if (message_size <= 0) {
@@ -108,7 +113,10 @@ int main(void) {
                     // Broadcast message to everyone else
                     for (int j = 0; j < active_connections; ++j) {
                         if (i != j) {
-                            write(connections[j], buf, message_size);
+                            if (write(connections[j], buf, (size_t)message_size) < 0) {
+                                perror("[ERROR] Could not broadcast message\n");
+                                continue;
+                            }
                             printf("\t[Server] Broadcasted message from fd %d to fd %d\n", connections[i], connections[j]);
                         }
                     }
