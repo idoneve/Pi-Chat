@@ -68,12 +68,15 @@ size_t append_to_buffer(char new_char, char* data, size_t len, size_t cap) {
     return len;
 }
 
-size_t remove_from_buffer(char* data, size_t len) {
+size_t remove_from_buffer(char* data, size_t len, size_t cap) {
     if (len == 0)
         return 0;
 
-    data[len] = '\0';
-    return len--;
+    if (len < cap){
+        data[len] = '\0';
+    }
+
+    return --len;
 }
 
 size_t empty_buffer(char* data, size_t len) {
@@ -96,7 +99,7 @@ void handle_text_input(Connection* selected) {
         switch (key) {
         case KEY_BACKSPACE:
             // TODO handle cursor postion
-            *input_len = remove_from_buffer(user_input, *input_len);
+            *input_len = remove_from_buffer(user_input, *input_len, input_cap);
             break;
 
         case KEY_ENTER:
@@ -139,7 +142,9 @@ void message_entry(AppModel* model) {
                 .height = CLAY_SIZING_GROW(0) 
             },
         },
+        .clip = {.vertical = true, .childOffset = Clay_GetScrollOffset()}
     }) {
+        handle_text_input(selected);
 
         // TODO handle cursor rendering
         CLAY_TEXT(((Clay_String) {
@@ -149,6 +154,7 @@ void message_entry(AppModel* model) {
                   }),
             CLAY_TEXT_CONFIG({
                 .textColor = COLOR_CHAT_USER_INPUT_TEXT,
+                .wrapMode = CLAY_TEXT_WRAP_WORDS,
                 .fontId = ID_CHAT_USER_INPUT_FONT,
                 .fontSize = SIZE_CHAT_USER_INPUT_FONT,
                 .letterSpacing = SPACING_CHAT_USER_INPUT_FONT,
@@ -191,19 +197,23 @@ void chat_window(AppModel* model) {
     CLAY({
         .id = CLAY_ID("ChatWindow"),
         .backgroundColor = COLOR_CHAT_BACKGROUND,
-        .clip = { 
-            .horizontal = false, 
-            .vertical = true,
-            .childOffset = Clay_GetScrollOffset() 
-        },
         .layout = { 
             .sizing = { .height = CLAY_SIZING_GROW(0), .width = CLAY_SIZING_GROW(0) },
             .layoutDirection = CLAY_TOP_TO_BOTTOM, 
-            .childGap = GAP_CHAT_MESSAGE_OUTER,
-        },
+            // .childAlignment = {.y = CLAY_ALIGN_Y_BOTTOM},
+        }, 
     }) {
-        for (size_t i = 0; i < active_connection->messages.len; i++) {
-            chat_message(i, &active_connection->messages.data[i]);
+
+        CLAY({ .id = CLAY_ID("MessageWindow"),
+            .clip
+            = { .horizontal = false, .vertical = true, .childOffset = Clay_GetScrollOffset() },
+            .layout = { .sizing = { .height = CLAY_SIZING_GROW(0), .width = CLAY_SIZING_GROW(0) },
+                .childGap = GAP_CHAT_MESSAGE_OUTER,
+                .layoutDirection = CLAY_TOP_TO_BOTTOM,
+                .childAlignment = { .y = CLAY_ALIGN_Y_TOP } } }) {
+            for (size_t i = 0; i < active_connection->messages.len; i++) {
+                chat_message(i, &active_connection->messages.data[i]);
+            }
         }
 
         // TODO fix Alignment
