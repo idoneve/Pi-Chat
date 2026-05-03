@@ -102,14 +102,14 @@ int main(void) {
                 if (message_size <= 0) {
                     // Client disconnected
                     close(connections[i]);
-                    printf("\t[Server] Client (fd %d) disconnected\n", i);
+                    printf("\t[Server] Client (fd %d) disconnected\n", connections[i]);
                     connections[i] = connections[--active_connections]; // Copy last fd into dead fd and shrinks active_connections
                 } else {
                     // Broadcast message to everyone else
                     for (int j = 0; j < active_connections; ++j) {
                         if (i != j) {
                             write(connections[j], buf, message_size);
-                            printf("\t[Server] Broadcasted message to fd %d from fd %d\n", j, i);
+                            printf("\t[Server] Broadcasted message from fd %d to fd %d\n", connections[i], connections[j]);
                         }
                     }
                 }
