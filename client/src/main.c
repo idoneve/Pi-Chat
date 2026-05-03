@@ -41,44 +41,11 @@ int main(int argc, char* argv[]) {
 
     printf("[Client] Trying to connect to server...\n");
     setup_signal_handler();
-    int socket_fd = connect_to_server(argv[1]);
+    // int socket_fd = connect_to_server(argv[1]);
     printf("[Client] Connected to server\n");
 
-    char message_buf[MAX_MSG_LEN + 1];
-    while (running) {
-        // Read message from stdin
-        int read_len;
-        printf("Enter Message: ");
-        if ((read_len = read(STDIN_FILENO, message_buf, MAX_MSG_LEN)) < 0) {
-            printf("[CLient] Message too long.\n\tMax Length: %d characters\n", MAX_MSG_LEN - 1);
-            continue;
-        }
-        message_buf[read_len] = '\0';
-
-        // Pack into message format to send to server
-
-        send_message(socket_fd, message_buf);
-
-        // Listen for message from server
-        // if ((msg_len = recv(socket_fd, message_buf, MAX_MSG_LEN, 0)) < 0) {
-        //     printf("[Client] failed to listen to message from server");
-        // //     continue;
-        // }
-
-        int msg_len;
-        if ((msg_len = unpack_message(socket_fd, message_buf, MAX_MSG_LEN)) < 0) {
-            printf("[Client] Failed to unpack message");
-        }
-        message_buf[msg_len] = '\0';
-
-        // Unpack and display message
-
-        printf("Message Received: %s", message_buf);
-
-        // Send kill to server
-    }
-
-    // start_ui_app(socket_fd);
+    printf("[Client] Starting GUI\n");
+    start_ui_app(0);
 
     return 0;
 }
