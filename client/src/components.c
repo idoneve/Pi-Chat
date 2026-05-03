@@ -5,8 +5,10 @@
 #include <../../chat.h>
 #include <arpa/inet.h>
 #include <components.h>
+#include <ctype.h>
 #include <netinet/in.h>
 #include <stddef.h>
+#include <stdio.h>
 #include <string.h>
 
 void chat_message(size_t index, const Message* message) {
@@ -57,6 +59,116 @@ void chat_message(size_t index, const Message* message) {
         }
     }
 }
+void append_to_buffer(char c, char* data, size_t* len, size_t capacity) {
+    if (*len == capacity - 1)
+        return;
+
+    data[*len] = c;
+    *len += 1;
+    data[*len] = '\0';
+}
+
+void message_entry(AppModel* model) {
+    Connection* selected = &model->connections.data[model->connections.selected];
+
+    char* user_input = selected->user_input.data;
+    size_t* input_len = &selected->user_input.len;
+    size_t* cursor = &selected->user_input.cursor;
+
+    int key;
+
+    CLAY({
+        .id = CLAY_ID("UserInput"),
+        .layout = { 
+            .padding = CLAY_PADDING_ALL(PADDING_CHAT_USER_INPUT),
+            .sizing = { 
+                .width = CLAY_SIZING_GROW(0), 
+                .height = CLAY_SIZING_GROW(0) 
+            },
+        },
+    }) {
+        if ((key = GetCharPressed()) != 0) {
+            size_t input_cap = sizeof(selected->user_input.data);
+            printf("Key Entered %c\n", key);
+            append_to_buffer(key, user_input, input_len, input_cap);
+        } else if ((key = GetKeyPressed()) != 0) {
+            switch (key) {
+            case KEY_BACKSPACE:
+                //TODO handle cursor postion
+                (*input_len) -= 1;
+                user_input[*input_len] = '\0';
+                break;
+
+            case KEY_ENTER:
+                // TODO - send user data
+                (*input_len) = 0;
+                user_input[0] = '\0';
+                break;
+
+            case KEY_LEFT:
+                *cursor -= 1;
+                break;
+
+            case KEY_RIGHT:
+                *cursor -= 1;
+                break;
+                
+            case KEY_UP:
+                *cursor = 0;
+                break;
+
+            case KEY_DOWN:
+                *cursor = *input_len;
+                break;
+
+            default:
+                break;
+            }
+        }
+
+        //TODO handle cursor rendering
+        CLAY_TEXT(((Clay_String) {
+                      .chars = user_input,
+                      .length = *input_len,
+                      .isStaticallyAllocated = false,
+                  }),
+            CLAY_TEXT_CONFIG({
+                .textColor = COLOR_CHAT_USER_INPUT_TEXT,
+                .fontId = ID_CHAT_USER_INPUT_FONT,
+                .fontSize = SIZE_CHAT_USER_INPUT_FONT,
+                .letterSpacing = SPACING_CHAT_USER_INPUT_FONT,
+            }));
+    }
+}
+
+void submit_button(AppModel* model) {
+    CLAY({
+        .id = CLAY_ID("SubmitButton"),
+        .layout = {
+            .sizing = {
+                .width = CLAY_SIZING_FIXED(SIZE_CHAT_SUBMIT_BUTTON_WIDTH),
+                .height = CLAY_SIZING_FIXED(SIZE_CHAT_SUBMIT_BUTTON_HEIGHT),
+            },
+            .childAlignment  = {.x = CLAY_ALIGN_X_CENTER, .y = CLAY_ALIGN_Y_CENTER},
+        },
+        .backgroundColor = Clay_Hovered() ? COLOR_CHAT_SUBMIT_BUTTON_HOVERED: COLOR_CHAT_SUBMIT_BUTTON_BACKGROUND,
+        .cornerRadius = CLAY_CORNER_RADIUS(CORNER_RADIUS_CHAT_SUBMIT_BUTTON),
+    }){
+        if (Clay_Hovered() && IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
+            Connection* selected = &model->connections.data[model->connections.selected];
+
+            // TODO send message
+            selected->user_input.len = 0;
+        }
+        CLAY_TEXT(CLAY_STRING("Send"),
+            CLAY_TEXT_CONFIG({
+                .textColor = COLOR_CHAT_SUBMIT_BUTTON,
+                .fontSize = SIZE_CHAT_SUBMIT_BUTTON_FONT,
+                .fontId = ID_CHAT_SUBMIT_BUTTON_FONT,
+                .letterSpacing = SPACING_CHAT_SUBMIT_BUTTON_FONT,
+            }));
+    }
+}
 
 void chat_window(AppModel* model) {
     Connection* active_connection = &model->connections.data[model->connections.selected];
@@ -77,6 +189,18 @@ void chat_window(AppModel* model) {
     }) {
         for (size_t i = 0; i < active_connection->messages.len; i++) {
             chat_message(i, &active_connection->messages.data[i]);
+        }
+
+        //TODO fix Alignment
+        CLAY({ .id = CLAY_ID("BottomChatBar"),
+            .layout = { .layoutDirection = CLAY_LEFT_TO_RIGHT,
+                .childGap = GAP_CHAT_BOTTOM_BAR,
+                .padding = CLAY_PADDING_ALL(PADDING_CHAT_BOTTOM_BAR),
+                .sizing = { .width = CLAY_SIZING_GROW(0), .height = CLAY_SIZING_FIT() } },
+            .border = { .width = { .top = SIZE_CHAT_BOTTOM_BAR_TOP_BORDER } },
+            .backgroundColor = COLOR_WHITE }) {
+            message_entry(model);
+            submit_button(model);
         }
     }
 }

@@ -3,6 +3,7 @@
 // #ifndef CLAY_IMPLEMENTATION
 // #error "This file include may not come before clay implementation defined"
 // #endif // !CLAY_IMPLEMENTATION
+#include "../../chat.h"
 #include "clay.h"
 #include "raylib.h"
 #include <stddef.h>
@@ -50,6 +51,12 @@ typedef struct {
         Message* data;
         size_t len;
     } messages;
+
+    struct {
+        char data[MAX_MSG_LEN + 1];
+        size_t len;
+        size_t cursor;
+    } user_input;
 
     // Readable name of ip destination
     char* dest;
