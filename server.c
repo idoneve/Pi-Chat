@@ -41,7 +41,24 @@ int main(void) {
 
     // Main loop
     while (running) {
+<<<<<<< Updated upstream
         // Forward messages from one client to another
+=======
+        int client_fd;
+
+        if ((client_fd = accept_client(server_fd)) >= 0) {
+            if (active_connections == MAX_CONNECTIONS) {
+                printf("[Sever] Cannot accept any more connections");
+                continue;
+            }
+
+            printf("[Server] Connection Accepted");
+            connections[active_connections] = server_fd;
+            active_connections += 1;
+
+            continue;
+        }
+>>>>>>> Stashed changes
     }
     printf("[Server] The server has shut down\n");
 
