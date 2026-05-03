@@ -17,7 +17,7 @@ TARNAME = final_submission
 all: client server
 
 client:
-    cd ./client/; make;
+	cd ./client/; make;
 
 server: $(SERVER_TARGET)
 
