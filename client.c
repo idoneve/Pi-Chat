@@ -63,7 +63,10 @@ int main(int argc, char *argv[]) {
             char input[MAX_MSG_LEN];
             fgets(input, sizeof(input), stdin); // Get input
             input[strcspn(input, "\n")] = '\0'; // Add terminator
-            send_message(socket_fd, input); // Send to server
+            if (send_message(socket_fd, input) < 0) { // Send to server
+                printf("[Client] Failed to send, server may be down\n");
+                break;
+            }
         }
 
         // Signal from server
