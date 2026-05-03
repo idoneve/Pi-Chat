@@ -56,15 +56,17 @@ int main(int argc, char* argv[]) {
             continue;
         }
 
+        printf("[Debug] user input accepted\n");
+
         message_buf[strcspn(message_buf, "\n")] = 0;
 
-        printf("[Client] Sending Message %s", message_buf);
+        printf("[Client] Sending Message %s\n", message_buf);
 
         // Pack into message format to send to server
 
         send_message(socket_fd, message_buf);
 
-        printf("[Client] Message Sent");
+        printf("[Client] Message Sent\n");
 
         // Listen for message from server
         // if ((msg_len = recv(socket_fd, message_buf, MAX_MSG_LEN, 0)) < 0) {
@@ -72,17 +74,17 @@ int main(int argc, char* argv[]) {
         // //     continue;
         // }
 
-        printf("[Client] Listening for server...");
+        printf("[Client] Listening for server...\n");
         int msg_len;
         if ((msg_len = unpack_message(socket_fd, message_buf, MAX_MSG_LEN)) < 0) {
-            printf("[Client] Failed to unpack message. Server Connection may have closed");
+            printf("[Client] Failed to unpack message. Server Connection may have closed\n");
             return 1;
         }
         message_buf[msg_len] = '\0';
 
         // Unpack and display message
 
-        printf("[Client] Message Received: %s", message_buf);
+        printf("[Client] Message Received: %s\n", message_buf);
 
         // Send kill to server
     }

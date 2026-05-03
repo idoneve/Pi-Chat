@@ -1,5 +1,5 @@
 #include "signal.h"
-#include <chat.h>
+#include "chat.h"
 #include <netinet/in.h>
 #include <stddef.h>
 #include <stdio.h>
@@ -63,16 +63,14 @@ int main(void) {
     while (running) {
         int client_fd;
 
-        // Accept Clients
-        if ((client_fd = accept_client(server_fd)) >= 0) {
-            if (active_connections == MAX_CONNECTIONS) {
-                printf("[Sever] Cannot accept any more connections");
-                continue;
-            }
-
-            printf("[Server] Connection Accepted");
-            connections[start % MAX_CONNECTIONS] = server_fd;
+        if (active_connections != MAX_CONNECTIONS && (client_fd = accept_client(server_fd)) >= 0) {
+            printf("[Server] Connection Accepted\n");
+            connections[(start + active_connections) % MAX_CONNECTIONS] = client_fd;
             active_connections += 1;
+            continue;
+        }
+
+        if (active_connections == 0) {
             continue;
         }
 
@@ -81,12 +79,13 @@ int main(void) {
             char message_buf[MAX_MSG_LEN + 1];
             int msg_len;
 
-            if ((msg_len
-                    = recv(connections[(start + i) % MAX_CONNECTIONS], message_buf, MAX_MSG_LEN, 0))
-                >= 0) {
-                message_buf[msg_len] = '\0';
-
-                printf("[Sever] Message Recived: %s", message_buf);
+            int current_connection = (start + i) % MAX_CONNECTIONS;
+            if ((msg_len = unpack_message(connections[current_connection], message_buf, MAX_MSG_LEN)) < 0) {
+                printf("[SERVER] Failed to unpack message\n");
+                running = 0;
+            }
+            if (msg_len > 0){
+                printf("[Sever] Message Recived: %s\n", message_buf);
             }
         }
     }
