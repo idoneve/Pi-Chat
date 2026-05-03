@@ -1,6 +1,7 @@
-#include "../../signal.h"
-#include "ui.h"
+#include "signal.h"
+#include "chat.h"
 #include <stdio.h>
+#include <string.h>
 #include <sys/socket.h>
 #include <unistd.h>
 
@@ -44,20 +45,26 @@ int main(int argc, char* argv[]) {
     int socket_fd = connect_to_server(argv[1]);
     printf("[Client] Connected to server\n");
 
+    int max_msg_len = MAX_MSG_LEN;
     char message_buf[MAX_MSG_LEN + 1];
     while (running) {
         // Read message from stdin
-        int read_len;
-        printf("Enter Message: ");
-        if ((read_len = read(STDIN_FILENO, message_buf, MAX_MSG_LEN)) < 0) {
-            printf("[CLient] Message too long.\n\tMax Length: %d characters\n", MAX_MSG_LEN - 1);
+        printf("\nEnter Message: ");
+
+        if (fgets(message_buf, MAX_MSG_LEN, stdin) == NULL) {
+            printf("[Client] Message too long.\n\tMax Length: %d characters\n", MAX_MSG_LEN - 1);
             continue;
         }
-        message_buf[read_len] = '\0';
+
+        message_buf[strcspn(message_buf, "\n")] = 0;
+
+        printf("[Client] Sending Message %s", message_buf);
 
         // Pack into message format to send to server
 
         send_message(socket_fd, message_buf);
+
+        printf("[Client] Message Sent");
 
         // Listen for message from server
         // if ((msg_len = recv(socket_fd, message_buf, MAX_MSG_LEN, 0)) < 0) {
@@ -65,15 +72,17 @@ int main(int argc, char* argv[]) {
         // //     continue;
         // }
 
+        printf("[Client] Listening for server...");
         int msg_len;
         if ((msg_len = unpack_message(socket_fd, message_buf, MAX_MSG_LEN)) < 0) {
-            printf("[Client] Failed to unpack message");
+            printf("[Client] Failed to unpack message. Server Connection may have closed");
+            return 1;
         }
         message_buf[msg_len] = '\0';
 
         // Unpack and display message
 
-        printf("Message Received: %s", message_buf);
+        printf("[Client] Message Received: %s", message_buf);
 
         // Send kill to server
     }
