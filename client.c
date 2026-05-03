@@ -1,9 +1,4 @@
 #include "signal.h"
-#include "chat.h"
-#include <stdio.h>
-#include <string.h>
-#include <sys/socket.h>
-#include <unistd.h>
 
 int connect_to_server(char *ip_addr) {
     // Create socket

@@ -1,9 +1,4 @@
 #include "signal.h"
-#include "chat.h"
-#include <netinet/in.h>
-#include <stddef.h>
-#include <stdio.h>
-#include <sys/socket.h>
 
 int start_server() {
     // Create socket
@@ -73,13 +68,20 @@ int main(void) {
         }
 
         // Only proceed if a watched fd is ready to read (no blocks)
-        select(max_fd + 1, &read_fds, NULL, NULL, NULL); 
+        if (select(max_fd + 1, &read_fds, NULL, NULL, NULL) < 0) {
+            if (errno != EINTR) {
+                break; // ctrl+C was pressed
+            } else {
+                perror("[ERROR] Select failed to proceed");
+                continue;
+            }
+        }
 
         // Accept clients
         if (FD_ISSET(server_fd, &read_fds)) {
             int client_fd = accept_client(server_fd);
             if (client_fd < 0) {
-                printf("[ERROR] Could not accept client\n");
+                perror("[ERROR] Could not accept client\n");
             } else if (active_connections >= MAX_CONNECTIONS) {
                 printf("[Server] Server is full\n");
                 close(client_fd); // Reject client if full
@@ -111,6 +113,10 @@ int main(void) {
         }
     }
 
+    if (close(server_fd) < 0) {
+        perror("[ERROR] The server could not shutdown\n");
+        return 1;
+    }
     printf("[Server] The server has shut down\n");
 
     return 0;
