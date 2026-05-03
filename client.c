@@ -35,22 +35,20 @@ int main(int argc, char *argv[]) {
         return 1;
     }
 
-    char message_buf[MAX_MSG_LEN + 1];
-    fd_set read_fds;
-
     printf("[Client] Trying to connect to server...\n");
     setup_signal_handler();
     int socket_fd = connect_to_server(argv[1]);
     printf("[Client] Connected to server\n\n");
 
     // Main loop
+    fd_set read_fds;
     while (running) {
         FD_ZERO(&read_fds);
         FD_SET(STDIN_FILENO, &read_fds); // Watch STDIN
         FD_SET(socket_fd, &read_fds); // Watch socket
 
         int max_fd = (STDIN_FILENO > socket_fd) ? STDIN_FILENO : socket_fd;
-        printf("\t[Client] Waiting for signal...\n");
+        printf("[Client] Waiting for input...\n");
         if (select(max_fd + 1, &read_fds, NULL, NULL, NULL) < 0) {
             if (errno == EINTR) {
                 continue; // ctrl+C was pressed

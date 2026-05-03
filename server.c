@@ -1,6 +1,6 @@
 #include "signal.h"
 
-int start_server() {
+int start_server(void) {
     // Create socket
     printf("\t[Server] Creating socket...\n");
     int server_fd = socket(AF_INET, SOCK_STREAM, 0);
@@ -68,7 +68,7 @@ int main(void) {
         }
 
         // Only proceed if a watched fd is ready to read (no blocks)
-        printf("\t[Server] Waiting for signal...\n");
+        printf("[Server] Waiting for signal...\n");
         if (select(max_fd + 1, &read_fds, NULL, NULL, NULL) < 0) {
             if (errno == EINTR) {
                 continue; // ctrl+C was pressed
@@ -96,7 +96,7 @@ int main(void) {
         // Check clients for messages
         for (int i = 0; i < active_connections; ++i) {
             if (FD_ISSET(connections[i], &read_fds)) {
-                printf("\t[Server] Client (fd %d) has data...\n");
+                printf("\t[Server] Client (fd %d) has data...\n", i);
                 char buf[HEADER_SIZE + MAX_MSG_LEN];
                 ssize_t message_size = read(connections[i], buf, sizeof(buf));
                 if (message_size <= 0) {
@@ -113,7 +113,7 @@ int main(void) {
                         }
                     }
                 }
-                printf("\t[Server] The message of size %d has been broadcasted\n", message_size);
+                printf("\t[Server] The message of size %zd has been broadcasted\n", message_size);
             }
         }
     }
