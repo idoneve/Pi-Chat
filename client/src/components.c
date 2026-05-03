@@ -72,7 +72,7 @@ size_t remove_from_buffer(char* data, size_t len, size_t cap) {
     if (len == 0)
         return 0;
 
-    if (len < cap){
+    if (len < cap) {
         data[len] = '\0';
     }
 
@@ -138,11 +138,12 @@ void message_entry(AppModel* model) {
         .layout = { 
             .padding = CLAY_PADDING_ALL(PADDING_CHAT_USER_INPUT),
             .sizing = { 
-                .width = CLAY_SIZING_GROW(0), 
-                .height = CLAY_SIZING_GROW(0) 
+                .width = CLAY_SIZING_GROW(), 
+                .height = CLAY_SIZING_FIT(50,200) 
             },
         },
-        .clip = {.vertical = true, .childOffset = Clay_GetScrollOffset()}
+        .border = {.width = CLAY_BORDER_OUTSIDE(5), .color = COLOR_LIGHT},
+        .clip = {.vertical = true, .horizontal = false, .childOffset = Clay_GetScrollOffset()}
     }) {
         handle_text_input(selected);
 
@@ -153,6 +154,7 @@ void message_entry(AppModel* model) {
                       .isStaticallyAllocated = false,
                   }),
             CLAY_TEXT_CONFIG({
+                .textAlignment = CLAY_TEXT_ALIGN_LEFT,
                 .textColor = COLOR_CHAT_USER_INPUT_TEXT,
                 .wrapMode = CLAY_TEXT_WRAP_WORDS,
                 .fontId = ID_CHAT_USER_INPUT_FONT,
@@ -163,31 +165,36 @@ void message_entry(AppModel* model) {
 }
 
 void submit_button(AppModel* model) {
-    CLAY({
+    CLAY({ .id = CLAY_ID("SubmitButtonContainer"),
+        .layout = { .layoutDirection = CLAY_TOP_TO_BOTTOM,
+            .sizing = { .width = CLAY_SIZING_FIT(), .height = CLAY_SIZING_GROW() } } }) {
+        CLAY({
         .id = CLAY_ID("SubmitButton"),
         .layout = {
             .sizing = {
-                .width = CLAY_SIZING_FIXED(SIZE_CHAT_SUBMIT_BUTTON_WIDTH),
-                .height = CLAY_SIZING_FIXED(SIZE_CHAT_SUBMIT_BUTTON_HEIGHT),
+                .width = CLAY_SIZING_FIT(),
+                .height = CLAY_SIZING_FIT(),
             },
+            .padding = CLAY_PADDING_ALL(PADDING_CHAT_SUBMIT_BUTTON),
             .childAlignment  = {.x = CLAY_ALIGN_X_CENTER, .y = CLAY_ALIGN_Y_CENTER},
         },
         .backgroundColor = Clay_Hovered() ? COLOR_CHAT_SUBMIT_BUTTON_HOVERED: COLOR_CHAT_SUBMIT_BUTTON_BACKGROUND,
         .cornerRadius = CLAY_CORNER_RADIUS(CORNER_RADIUS_CHAT_SUBMIT_BUTTON),
     }){
-        if (Clay_Hovered() && IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
-            Connection* selected = &model->connections.data[model->connections.selected];
+            if (Clay_Hovered() && IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
+                Connection* selected = &model->connections.data[model->connections.selected];
 
-            // TODO send message
-            selected->user_input.len = 0;
+                // TODO send message
+                selected->user_input.len = 0;
+            }
+            CLAY_TEXT(CLAY_STRING("Send"),
+                CLAY_TEXT_CONFIG({
+                    .textColor = COLOR_CHAT_SUBMIT_BUTTON,
+                    .fontSize = SIZE_CHAT_SUBMIT_BUTTON_FONT,
+                    .fontId = ID_CHAT_SUBMIT_BUTTON_FONT,
+                    .letterSpacing = SPACING_CHAT_SUBMIT_BUTTON_FONT,
+                }));
         }
-        CLAY_TEXT(CLAY_STRING("Send"),
-            CLAY_TEXT_CONFIG({
-                .textColor = COLOR_CHAT_SUBMIT_BUTTON,
-                .fontSize = SIZE_CHAT_SUBMIT_BUTTON_FONT,
-                .fontId = ID_CHAT_SUBMIT_BUTTON_FONT,
-                .letterSpacing = SPACING_CHAT_SUBMIT_BUTTON_FONT,
-            }));
     }
 }
 
@@ -200,7 +207,6 @@ void chat_window(AppModel* model) {
         .layout = { 
             .sizing = { .height = CLAY_SIZING_GROW(0), .width = CLAY_SIZING_GROW(0) },
             .layoutDirection = CLAY_TOP_TO_BOTTOM, 
-            // .childAlignment = {.y = CLAY_ALIGN_Y_BOTTOM},
         }, 
     }) {
 
@@ -211,6 +217,7 @@ void chat_window(AppModel* model) {
                 .childGap = GAP_CHAT_MESSAGE_OUTER,
                 .layoutDirection = CLAY_TOP_TO_BOTTOM,
                 .childAlignment = { .y = CLAY_ALIGN_Y_TOP } } }) {
+
             for (size_t i = 0; i < active_connection->messages.len; i++) {
                 chat_message(i, &active_connection->messages.data[i]);
             }
@@ -222,8 +229,8 @@ void chat_window(AppModel* model) {
                 .childGap = GAP_CHAT_BOTTOM_BAR,
                 .padding = CLAY_PADDING_ALL(PADDING_CHAT_BOTTOM_BAR),
                 .sizing = { .width = CLAY_SIZING_GROW(0), .height = CLAY_SIZING_FIT() } },
-            .border = { .width = { .top = SIZE_CHAT_BOTTOM_BAR_TOP_BORDER } },
             .backgroundColor = COLOR_WHITE }) {
+
             message_entry(model);
             submit_button(model);
         }
