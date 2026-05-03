@@ -5,7 +5,6 @@
 #include <../../chat.h>
 #include <arpa/inet.h>
 #include <components.h>
-#include <ctype.h>
 #include <netinet/in.h>
 #include <stddef.h>
 #include <stdio.h>
