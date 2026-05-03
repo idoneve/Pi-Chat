@@ -1,4 +1,8 @@
 #include "signal.h"
+#include <netinet/in.h>
+#include <stddef.h>
+#include <stdio.h>
+#include <sys/socket.h>
 
 int start_server() {
     // Create socket
@@ -9,14 +13,14 @@ int start_server() {
         exit(1);
     }
     printf("\t[Server] Socket created\n");
-    
+
     // Bind port to socket
     printf("\t[Server] Binding socket...\n");
     struct sockaddr_in addr;
     addr.sin_family = AF_INET; // Use ipv4
     addr.sin_addr.s_addr = INADDR_ANY; // Listens on all network interfaces
     addr.sin_port = htons(PORT); // Get port
-    if (bind(server_fd, (struct sockaddr *)&addr, sizeof(addr)) < 0) {
+    if (bind(server_fd, (struct sockaddr*)&addr, sizeof(addr)) < 0) {
         perror("[ERROR] Failed to bind socket\n");
         exit(1);
     }
@@ -33,17 +37,30 @@ int start_server() {
     return server_fd;
 }
 
+int accept_client(int server_fd) {
+    struct sockaddr_in client_addr;
+    socklen_t client_len = sizeof(client_addr);
+    int client_fd = accept(server_fd, (struct sockaddr*)&client_addr, &client_len);
+    if (client_fd < 0) {
+        perror("[ERROR] Failed to accept client connection\n");
+        return -1;
+    }
+    printf("\t[Server] Accepted client connection\n");
+    return client_fd;
+}
+
 int main(void) {
     printf("[Server] Starting up server...\n");
     setup_signal_handler();
     int server_fd = start_server();
     printf("[Server] Server has started\n");
 
+    const size_t MAX_CONNECTIONS = 2;
+    int connections[MAX_CONNECTIONS];
+    int active_connections = 0;
+
     // Main loop
     while (running) {
-<<<<<<< Updated upstream
-        // Forward messages from one client to another
-=======
         int client_fd;
 
         if ((client_fd = accept_client(server_fd)) >= 0) {
@@ -55,11 +72,10 @@ int main(void) {
             printf("[Server] Connection Accepted");
             connections[active_connections] = server_fd;
             active_connections += 1;
-
             continue;
         }
->>>>>>> Stashed changes
     }
+
     printf("[Server] The server has shut down\n");
 
     return 0;
