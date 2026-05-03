@@ -77,7 +77,7 @@ int main(void) {
                 break;
             }
         }
-        printf("\t[Server] A client is trying to connect...\n");
+        printf("\t[Server] A signal is being processed...\n");
 
         // Accept clients
         if (FD_ISSET(server_fd, &read_fds)) {
@@ -89,14 +89,14 @@ int main(void) {
                 close(client_fd); // Reject client if full
             } else {
                 connections[active_connections++] = client_fd;
-                printf("\t[Server] Connection accepted (fd %d)\n", client_fd);
+                printf("\t[Server] Client connection accepted (fd %d)\n", client_fd);
             }
         }
 
         // Check clients for messages
         for (int i = 0; i < active_connections; ++i) {
             if (FD_ISSET(connections[i], &read_fds)) {
-                printf("\t[Server] Client (fd %d) has data...\n", i);
+                printf("\t[Server] Client (fd %d) is sending a signal...\n", i);
                 char buf[HEADER_SIZE + MAX_MSG_LEN];
                 ssize_t message_size = read(connections[i], buf, sizeof(buf));
                 if (message_size <= 0) {
