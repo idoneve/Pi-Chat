@@ -52,9 +52,10 @@ int main(void) {
     printf("[Server] Starting up server...\n");
     setup_signal_handler();
     int server_fd = start_server();
-    printf("[Server] Server has started\n");
+    printf("[Server] Server has started\n\n");
 
     // Main loop
+    printf("[Server] Server is running...\n");
     while (running) {
         // Create fd reader
         FD_ZERO(&read_fds);
@@ -68,14 +69,16 @@ int main(void) {
         }
 
         // Only proceed if a watched fd is ready to read (no blocks)
+        printf("\t[Server] Waiting client to connect...\n");
         if (select(max_fd + 1, &read_fds, NULL, NULL, NULL) < 0) {
-            if (errno != EINTR) {
-                break; // ctrl+C was pressed
+            if (errno == EINTR) {
+                continue; // ctrl+C was pressed
             } else {
-                perror("[ERROR] Select failed to proceed");
-                continue;
+                perror("[ERROR] Failed to select fd with data\n");
+                break;
             }
         }
+        printf("\t[Server] A client is trying to connect...\n");
 
         // Accept clients
         if (FD_ISSET(server_fd, &read_fds)) {
@@ -83,36 +86,41 @@ int main(void) {
             if (client_fd < 0) {
                 perror("[ERROR] Could not accept client\n");
             } else if (active_connections >= MAX_CONNECTIONS) {
-                printf("[Server] Server is full\n");
+                printf("\t[Server] Server is full\n");
                 close(client_fd); // Reject client if full
             } else {
                 connections[active_connections++] = client_fd;
-                printf("[Server] Connection accepted (fd %d)\n", client_fd);
+                printf("\t[Server] Connection accepted (fd %d)\n", client_fd);
             }
         }
 
         // Check clients for messages
         for (int i = 0; i < active_connections; ++i) {
             if (FD_ISSET(connections[i], &read_fds)) {
+                printf("\t[Server] Client (fd %d) has data...\n");
                 char buf[HEADER_SIZE + MAX_MSG_LEN];
                 ssize_t message_size = read(connections[i], buf, sizeof(buf));
                 if (message_size <= 0) {
                     // Client disconnected
                     close(connections[i]);
+                    printf("\t[Server] Client (fd %d) disconnected\n", i);
                     connections[i] = connections[--active_connections]; // Copy last fd into dead fd and shrinks active_connections
-                    printf("[Server] Client disconnected\n");
                 } else {
                     // Broadcast message to everyone else
                     for (int j = 0; j < active_connections; ++j) {
                         if (i != j) {
                             write(connections[j], buf, message_size);
+                            printf("\t[Server] Broadcasted message to fd %d from fd %d\n", j, i);
                         }
                     }
                 }
+                printf("\t[Server] The message of size %d has been broadcasted\n", message_size);
             }
         }
     }
 
+    // Close the server
+    printf("[Server] Shutting down server...\n");
     if (close(server_fd) < 0) {
         perror("[ERROR] The server could not shutdown\n");
         return 1;
