@@ -30,54 +30,63 @@ int connect_to_server(char *ip_addr) {
 }
 
 int main(int argc, char *argv[]) {
-    if (argc < 2) {
+    if (argc != 2) {
         perror("IP address of server must be provided as first argument");
         return 1;
     }
 
+    char message_buf[MAX_MSG_LEN + 1];
+    fd_set read_fds;
+
     printf("[Client] Trying to connect to server...\n");
     setup_signal_handler();
     int socket_fd = connect_to_server(argv[1]);
-    printf("[Client] Connected to server\n");
+    printf("[Client] Connected to server\n\n");
 
-    char message_buf[MAX_MSG_LEN + 1];
+    // Main loop
     while (running) {
-        // Read message from stdin
-        printf("\nEnter Message: ");
-        if (fgets(message_buf, MAX_MSG_LEN, stdin) == NULL) {
-            printf("[ERROR] Message too long: Max Length: %d characters\n", MAX_MSG_LEN - HEADER_SIZE);
-            continue;
+        FD_ZERO(&read_fds);
+        FD_SET(STDIN_FILENO, &read_fds); // Watch STDIN
+        FD_SET(socket_fd, &read_fds); // Watch socket
+
+        int max_fd = (STDIN_FILENO > socket_fd) ? STDIN_FILENO : socket_fd;
+        printf("\t[Client] Waiting for signal...\n");
+        if (select(max_fd + 1, &read_fds, NULL, NULL, NULL) < 0) {
+            if (errno == EINTR) {
+                continue; // ctrl+C was pressed
+            } else {
+                perror("[ERROR] Failed to select fd with data\n");
+                break;
+            }
         }
-        printf("[Client] User input recieved\n");
-
-        // Send message to server
-        message_buf[strcspn(message_buf, "\n")] = 0; // add terminator at end of line
-        printf("[Client] Sending Message %s to %s...\n", message_buf, argv[1]);
-        send_message(socket_fd, message_buf);
-        printf("[Client] Message Sent\n");
-
-        // Listen for message from server
-        // if ((msg_len = recv(socket_fd, message_buf, MAX_MSG_LEN, 0)) < 0) {
-        //     printf("[Client] failed to listen to message from server");
-        // //     continue;
-        // }
-
-        printf("[Client] Listening for server...\n");
-        int msg_len;
-        if ((msg_len = unpack_message(socket_fd, message_buf, MAX_MSG_LEN)) < 0) {
-            perror("[ERROR] Failed to unpack message. Server Connection may have closed\n");
-            return 1;
+        
+        // Signal from STDIN
+        if (FD_ISSET(STDIN_FILENO, &read_fds)) {
+            char input[MAX_MSG_LEN];
+            fgets(input, sizeof(input), stdin); // Get input
+            input[strcspn(input, "\n")] = '\0'; // Add terminator
+            send_message(socket_fd, input); // Send to server
         }
-        message_buf[msg_len] = '\0';
 
-        // Unpack and display message
-
-        printf("[Client] Message Received: %s\n", message_buf);
-
-        // Send kill to server
+        // Signal from server
+        if (FD_ISSET(socket_fd, &read_fds)) {
+            char message[MAX_MSG_LEN];
+            int message_size = unpack_message(socket_fd, message, sizeof(message));
+            if (message_size <= 0) {
+                printf("[Client] Server has disconnected\n");
+                break;
+            }
+            printf("[Client]: Recieved message from server: \"%s\"\n", message);
+        }
     }
 
-    // start_ui_app(socket_fd);
+    // Disconnect the client
+    printf("[Client] Disconnecting from server...\n");
+    if (close(socket_fd) < 0) {
+        perror("[ERROR] Could not disconnect from server\n");
+        return 1;
+    }
+    printf("[Client] Disconnected\n");
 
     return 0;
 }

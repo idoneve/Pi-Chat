@@ -55,7 +55,6 @@ int main(void) {
     printf("[Server] Server has started\n\n");
 
     // Main loop
-    printf("[Server] Server is running...\n");
     while (running) {
         // Create fd reader
         FD_ZERO(&read_fds);
@@ -69,7 +68,7 @@ int main(void) {
         }
 
         // Only proceed if a watched fd is ready to read (no blocks)
-        printf("\t[Server] Waiting client to connect...\n");
+        printf("\t[Server] Waiting for signal...\n");
         if (select(max_fd + 1, &read_fds, NULL, NULL, NULL) < 0) {
             if (errno == EINTR) {
                 continue; // ctrl+C was pressed
