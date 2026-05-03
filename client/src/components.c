@@ -10,6 +10,7 @@
 #include <stddef.h>
 #include <stdio.h>
 #include <string.h>
+#include <sys/types.h>
 
 void chat_message(size_t index, const Message* message) {
     CLAY({
@@ -59,23 +60,76 @@ void chat_message(size_t index, const Message* message) {
         }
     }
 }
-void append_to_buffer(char c, char* data, size_t* len, size_t capacity) {
-    if (*len == capacity - 1)
-        return;
 
-    data[*len] = c;
-    *len += 1;
-    data[*len] = '\0';
+size_t append_to_buffer(char new_char, char* data, size_t len, size_t cap) {
+    if (len == cap)
+        return len;
+
+    data[len++] = new_char;
+    return len;
 }
 
-void message_entry(AppModel* model) {
-    Connection* selected = &model->connections.data[model->connections.selected];
+size_t remove_from_buffer(char* data, size_t len) {
+    if (len == 0)
+        return 0;
 
+    data[len] = '\0';
+    return len--;
+}
+
+size_t empty_buffer(char* data, size_t len) {
+    memset(data, '\0', len);
+    return 0;
+}
+
+void handle_text_input(Connection* selected) {
     char* user_input = selected->user_input.data;
     size_t* input_len = &selected->user_input.len;
     size_t* cursor = &selected->user_input.cursor;
 
+    const size_t input_cap = sizeof(selected->user_input.data);
     int key;
+    if ((key = GetCharPressed()) != 0) {
+
+        *input_len = append_to_buffer(key, user_input, *input_len, input_cap);
+
+    } else if ((key = GetKeyPressed()) != 0) {
+        switch (key) {
+        case KEY_BACKSPACE:
+            // TODO handle cursor postion
+            *input_len = remove_from_buffer(user_input, *input_len);
+            break;
+
+        case KEY_ENTER:
+            // TODO - send user data
+            *input_len = empty_buffer(user_input, *input_len);
+            break;
+
+        case KEY_LEFT:
+            *cursor -= 1;
+            break;
+
+        case KEY_RIGHT:
+            *cursor -= 1;
+            break;
+
+        case KEY_UP:
+            *cursor = 0;
+            break;
+
+        case KEY_DOWN:
+            *cursor = *input_len;
+            break;
+
+        default:
+            break;
+        }
+    }
+    return;
+}
+
+void message_entry(AppModel* model) {
+    Connection* selected = &model->connections.data[model->connections.selected];
 
     CLAY({
         .id = CLAY_ID("UserInput"),
@@ -87,49 +141,11 @@ void message_entry(AppModel* model) {
             },
         },
     }) {
-        if ((key = GetCharPressed()) != 0) {
-            size_t input_cap = sizeof(selected->user_input.data);
-            printf("Key Entered %c\n", key);
-            append_to_buffer(key, user_input, input_len, input_cap);
-        } else if ((key = GetKeyPressed()) != 0) {
-            switch (key) {
-            case KEY_BACKSPACE:
-                //TODO handle cursor postion
-                (*input_len) -= 1;
-                user_input[*input_len] = '\0';
-                break;
 
-            case KEY_ENTER:
-                // TODO - send user data
-                (*input_len) = 0;
-                user_input[0] = '\0';
-                break;
-
-            case KEY_LEFT:
-                *cursor -= 1;
-                break;
-
-            case KEY_RIGHT:
-                *cursor -= 1;
-                break;
-                
-            case KEY_UP:
-                *cursor = 0;
-                break;
-
-            case KEY_DOWN:
-                *cursor = *input_len;
-                break;
-
-            default:
-                break;
-            }
-        }
-
-        //TODO handle cursor rendering
+        // TODO handle cursor rendering
         CLAY_TEXT(((Clay_String) {
-                      .chars = user_input,
-                      .length = *input_len,
+                      .chars = selected->user_input.data,
+                      .length = selected->user_input.len,
                       .isStaticallyAllocated = false,
                   }),
             CLAY_TEXT_CONFIG({
@@ -191,7 +207,7 @@ void chat_window(AppModel* model) {
             chat_message(i, &active_connection->messages.data[i]);
         }
 
-        //TODO fix Alignment
+        // TODO fix Alignment
         CLAY({ .id = CLAY_ID("BottomChatBar"),
             .layout = { .layoutDirection = CLAY_LEFT_TO_RIGHT,
                 .childGap = GAP_CHAT_BOTTOM_BAR,
