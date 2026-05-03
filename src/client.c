@@ -1,6 +1,6 @@
-#include "signal.h"
+#include "client.h"
 
-int connect_to_server(char *);
+volatile sig_atomic_t running = 1;
 
 int connect_to_server(char *ip_addr) {
     // Create socket

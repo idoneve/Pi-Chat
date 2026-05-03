@@ -29,9 +29,20 @@
 #define EXIT_CONNECT    5
 
 // Shutdown flag for signal handling
-extern volatile sig_atomic_t running;
+volatile sig_atomic_t running;
 
-void setup_signal_handler(void);
+static inline void kill_sig(int sig) {
+    (void)sig;
+    running = 0;
+}
+
+static inline void setup_signal_handler(void) {
+    struct sigaction sa;
+    sa.sa_handler = kill_sig;
+    sa.sa_flags = 0;
+    sigemptyset(&sa.sa_mask);
+    sigaction(SIGINT, &sa, NULL);
+}
 
 // Pack a message with length prefix, returns total bytes to send
 static inline ssize_t pack_message(const char *msg, char *out_buf, size_t buf_size) {
