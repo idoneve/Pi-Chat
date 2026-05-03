@@ -1,8 +1,3 @@
-<<<<<<< Updated upstream
-#include "signal.h"
-
-int connect_to_server(char *ip_addr) {
-=======
 #include "../../signal.h"
 #include "ui.h"
 #include <stdio.h>
@@ -10,7 +5,6 @@ int connect_to_server(char *ip_addr) {
 #include <unistd.h>
 
 int connect_to_server(char* ip_addr) {
->>>>>>> Stashed changes
     // Create socket
     printf("\t[Client] Creating socket...\n");
     int socket_fd = socket(AF_INET, SOCK_STREAM, 0);
@@ -30,11 +24,7 @@ int connect_to_server(char* ip_addr) {
 
     // Connect to socket
     printf("\t[Client] Connecting to socket...\n");
-<<<<<<< Updated upstream
-    if (connect(socket_fd, (struct sockaddr *)&addr, sizeof(addr)) < 0) {
-=======
     if (connect(socket_fd, (struct sockaddr*)&addr, sizeof(addr)) < 0) {
->>>>>>> Stashed changes
         perror("[Error] Failed to connect to server");
         exit(1);
     }
@@ -43,27 +33,6 @@ int connect_to_server(char* ip_addr) {
     return socket_fd;
 }
 
-<<<<<<< Updated upstream
-int main(int argc, char *argv[]) {
-    printf("[Client] Trying to connect to server...\n");
-    setup_signal_handler();
-    int socket_fd = connect_to_server(argv[1]); 
-    printf("[Client] Connected to server\n");
-
-    // Main loop
-    while (running) {
-        // Read message from stdin
-
-        // Pack into message format to send to server
-
-        // Listen for message from server
-
-        // Unpack and display message
-
-        // Send kill to server
-    }
-
-=======
 int main(int argc, char* argv[]) {
     if (argc < 2) {
         printf("Ip address of server must be provided as first argument");
@@ -111,6 +80,5 @@ int main(int argc, char* argv[]) {
 
     // start_ui_app(socket_fd);
 
->>>>>>> Stashed changes
     return 0;
 }
