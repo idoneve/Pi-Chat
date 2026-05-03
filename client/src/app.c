@@ -12,11 +12,6 @@
 
 extern bool reinitializeClay;
 
-// Layout config is just a struct that can be declared statically, or inline
-Clay_ElementDeclaration sidebarItemConfig = (Clay_ElementDeclaration) { .layout
-    = { .sizing = { .width = CLAY_SIZING_GROW(0), .height = CLAY_SIZING_FIXED(50) } },
-    .backgroundColor = COLOR_ORANGE };
-
 AppState initialize_app(Font* fonts) {
     uint64_t totalMemorySize = Clay_MinMemorySize();
     Clay_Arena arena
