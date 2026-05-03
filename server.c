@@ -1,4 +1,5 @@
 #include "signal.h"
+#include <chat.h>
 #include <netinet/in.h>
 #include <stddef.h>
 #include <stdio.h>
@@ -45,7 +46,6 @@ int accept_client(int server_fd) {
         perror("[ERROR] Failed to accept client connection\n");
         return -1;
     }
-    printf("\t[Server] Accepted client connection\n");
     return client_fd;
 }
 
@@ -57,12 +57,13 @@ int main(void) {
 
     const size_t MAX_CONNECTIONS = 2;
     int connections[MAX_CONNECTIONS];
-    int active_connections = 0;
+    int start = 0, active_connections = 0;
 
     // Main loop
     while (running) {
         int client_fd;
 
+        // Accept Clients
         if ((client_fd = accept_client(server_fd)) >= 0) {
             if (active_connections == MAX_CONNECTIONS) {
                 printf("[Sever] Cannot accept any more connections");
@@ -70,9 +71,23 @@ int main(void) {
             }
 
             printf("[Server] Connection Accepted");
-            connections[active_connections] = server_fd;
+            connections[start % MAX_CONNECTIONS] = server_fd;
             active_connections += 1;
             continue;
+        }
+
+        // Get Messages
+        for (int i = 0; i < active_connections; i++) {
+            char message_buf[MAX_MSG_LEN + 1];
+            int msg_len;
+
+            if ((msg_len
+                    = recv(connections[(start + i) % MAX_CONNECTIONS], message_buf, MAX_MSG_LEN, 0))
+                >= 0) {
+                message_buf[msg_len] = '\0';
+
+                printf("[Sever] Message Recived: %s", message_buf);
+            }
         }
     }
 
