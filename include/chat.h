@@ -72,9 +72,9 @@ typedef struct {
 
 static Connections init_connections() {
     return (Connections) {
-        .data = malloc(sizeof(Connection) * 2),
+        .data = malloc(sizeof(Connection) * MAX_CONNECTIONS),
         .len = 0,
-        .cap = 2,
+        .cap = MAX_CONNECTIONS,
     };
 }
 
@@ -93,7 +93,7 @@ static void add_connection(Connections* connections, Connection connection) {
         connections->data = malloc(sizeof(Connection) * connections->cap);
     }
 
-    connections->data[connections->len] = connection;
+    connections->data[connections->len++] = connection;
 }
 
 // Shutdown flag for signal handling
@@ -117,7 +117,7 @@ static inline ssize_t pack_message(const ClientMessage* message, char* out_buf, 
     if (message->content.len + HEADER_SIZE > buf_size)
         return -1; // msg too big
 
-    char type[HEADER_TYPE_SIZE] = { SEND };
+    char type[HEADER_TYPE_SIZE] = { MESSAGE };
     memcpy(out_buf, type, HEADER_TYPE_SIZE);
     memcpy(out_buf + HEADER_TYPE_SIZE, message->ip, HEADER_ADDR_SIZE);
 
