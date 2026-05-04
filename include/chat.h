@@ -1,6 +1,7 @@
 #ifndef CHAT_H
 #define CHAT_H
 
+#include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -19,7 +20,10 @@
 #define MAX_CONNECTIONS 2
 
 // Message framing: 4-byte length prefix, then payload
-#define HEADER_SIZE 4
+#define HEADER_TYPE_SIZE 1
+#define HEADER_ADDR_SIZE INET_ADDRSTRLEN
+#define HEADER_LEN_SIZE 4
+#define HEADER_SIZE HEADER_LEN_SIZE + HEADER_ADDR_SIZE + HEADER_TYPE_SIZE
 
 // Exit codes
 #define EXIT_SOCKET 1
@@ -40,16 +44,16 @@ typedef struct {
 
     struct {
         char receive_source[INET_ADDRSTRLEN];
+        char send_dest[INET_ADDRSTRLEN];
     } type_data;
 
     // Readable Ip Source
 } ClientMessage;
 
+typedef enum { ACTIVITY, MESSAGE, INVALID, DISCONNECT } MessageType;
+
 typedef struct {
-    enum {
-        ACTIVITY,
-        MESSAGE,
-    } type;
+    MessageType type;
 
     union {
         ClientMessage message;
@@ -73,51 +77,107 @@ static inline void setup_signal_handler(void) {
 }
 
 // Pack a message with length prefix, returns total bytes to send
-static inline ssize_t pack_message(const char* msg, char* out_buf, size_t buf_size) {
-    size_t msg_len = strlen(msg);
-    if (msg_len + HEADER_SIZE > buf_size)
+static inline ssize_t pack_message(
+    const ClientMessage* send_message, char* out_buf, size_t buf_size) {
+    if (send_message->content.len + HEADER_SIZE > buf_size)
         return -1; // msg too big
 
-    uint32_t net_len = htonl((unsigned int)msg_len);
-    memcpy(out_buf, &net_len, HEADER_SIZE);
-    memcpy(out_buf + HEADER_SIZE, msg, msg_len);
+    char type[HEADER_TYPE_SIZE] = { SEND };
+    memcpy(out_buf, type, HEADER_TYPE_SIZE);
+    memcpy(out_buf + HEADER_TYPE_SIZE, send_message->type_data.send_dest, HEADER_ADDR_SIZE);
 
-    return (ssize_t)(msg_len + HEADER_SIZE);
+    uint32_t net_len = htonl((unsigned int)send_message->content.len);
+    memcpy(out_buf + HEADER_SIZE - HEADER_LEN_SIZE, &net_len, HEADER_LEN_SIZE);
+    memcpy(out_buf + HEADER_SIZE, send_message->content.data, send_message->content.len);
+
+    return (ssize_t)(send_message->content.len + HEADER_SIZE);
 }
 
-// Unpack a length-prefixed message. Returns message length or -1 on error
-static inline ssize_t unpack_message(int fd, char* out_msg, size_t max_len) {
+static inline Message unpack_message(int fd) {
     uint32_t net_len;
     size_t msg_len;
 
+    Message result;
+
+    ssize_t n;
+
+    char type[HEADER_TYPE_SIZE];
+    n = recv(fd, type, HEADER_TYPE_SIZE, 0);
+    if (n == 0) {
+        return (Message) { .type = DISCONNECT };
+    } else if (n < 0) {
+        return (Message) { .type = INVALID };
+    }
+
+    result.type = (MessageType)*type;
+
+    if (result.type == ACTIVITY) {
+        return result;
+    }
+
+    char dest_buf[HEADER_ADDR_SIZE];
+    n = recv(fd, dest_buf, HEADER_ADDR_SIZE, 0);
+    if (n == 0) {
+        return (Message) { .type = DISCONNECT };
+    } else if (n < 0) {
+        return (Message) { .type = INVALID };
+    }
+
+    if (n < HEADER_ADDR_SIZE) {
+        return (Message) { .type = INVALID };
+    }
+
+    // Copy address into receive ClientMessage
+    result.type_data.message = (ClientMessage) { .type = RECEIVE };
+    memcpy(result.type_data.message.type_data.receive_source, dest_buf, HEADER_ADDR_SIZE);
+
     // Read 4-byte length header
-    ssize_t n = recv(fd, &net_len, HEADER_SIZE, 0);
-    if (n <= 0)
-        return n; // 0 = disconnect, -1 = error
-    if (n < HEADER_SIZE)
-        return -1; // Incomplete header
+    n = recv(fd, &net_len, HEADER_LEN_SIZE, 0);
+    if (n == 0) {
+        return (Message) { .type = DISCONNECT };
+    } else if (n < 0) {
+        return (Message) { .type = INVALID };
+    }
+
+    if (n < HEADER_LEN_SIZE)
+        return (Message) { .type = INVALID }; // Incomplete header
 
     msg_len = ntohl(net_len);
-    if (msg_len <= 0 || msg_len >= max_len)
-        return -1;
+    if (msg_len <= 0 || msg_len >= MAX_MSG_LEN)
+        return (Message) { .type = INVALID };
+
+    result.type_data.message.content.len = msg_len;
+    char** msg_data = &result.type_data.message.content.data;
+    *msg_data = malloc(msg_len + 1);
 
     // Read the actual message
     ssize_t total = 0;
     while (total < (ssize_t)msg_len) {
-        n = recv(fd, out_msg + total, msg_len - (size_t)total, 0);
-        if (n <= 0)
-            return n;
+        n = recv(fd, *msg_data + total, msg_len - (size_t)total, 0);
+        if (n == 0) {
+            free(msg_data);
+            return (Message) { .type = DISCONNECT };
+        } else if (n < 0) {
+            free(msg_data);
+            return (Message) { .type = INVALID };
+        }
         total += n;
     }
-    out_msg[msg_len] = '\0';
+    (*msg_data)[msg_len] = '\0';
+    
 
-    return (ssize_t)msg_len;
+    return result;
 }
 
 // Send a length-prefixed message
-static inline ssize_t send_message(int fd, const char* msg) {
+static inline ssize_t send_message(int fd, const ClientMessage* message) {
+    if (message->type != SEND){
+        printf("[ERROR] Invalid message type was queued for send");
+        return -1;
+    }
+
     char packet[MAX_MSG_LEN + HEADER_SIZE];
-    ssize_t total = pack_message(msg, packet, sizeof(packet));
+    ssize_t total = pack_message(message, packet, sizeof(packet));
     if (total < 0)
         return -1;
 

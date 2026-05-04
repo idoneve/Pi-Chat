@@ -1,7 +1,10 @@
 #include "client.h"
+#include <complex.h>
 #include <netinet/in.h>
 #include <stddef.h>
 #include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 #include <sys/select.h>
 #include <sys/socket.h>
 #include <ui.h>
@@ -18,7 +21,7 @@ static void connect_to_socket(int socket_fd, struct sockaddr_in* addr, socklen_t
     printf("\t[Client] Connected to socket\n");
 }
 
-int connect_to_server(char* ip_addr) {
+static int connect_to_server(char* ip_addr) {
     int socket_fd = create_socket();
 
     printf("\t[Client] Configuring socket...\n");
@@ -61,28 +64,68 @@ static int start_cli(int socket_fd) {
 
         // Signal from STDIN
         if (FD_ISSET(STDIN_FILENO, &read_fds)) {
+            char addr[INET_ADDRSTRLEN];
+            printf("[CLIENT] Enter Destination Address: ");
+            if (fgets(addr, sizeof(addr), stdin) == NULL) { // Get input
+                perror("[ERROR] Something went wrong reading input\n");
+                break;
+            }
+
             char input[MAX_MSG_LEN];
+            printf("[CLIENT] Enter Message: ");
             if (fgets(input, sizeof(input), stdin) == NULL) { // Get input
                 perror("[ERROR] Something went wrong reading input\n");
                 break;
             }
             input[strcspn(input, "\n")] = '\0'; // Add terminator
-            if (send_message(socket_fd, input) < 0) { // Send to server
+            ClientMessage c = {
+                .content = {
+                    .data = input,
+                    .len = strnlen(input, MAX_MSG_LEN),
+                },
+                .type = SEND,
+            };
+
+            memcpy(c.type_data.send_dest, addr, HEADER_ADDR_SIZE);
+
+            if (send_message(socket_fd, &c) < 0) { // Send to server
                 printf("[Client] Failed to send, server may be down\n");
                 break;
             }
         }
 
         // Signal from server
-        if (FD_ISSET(socket_fd, &read_fds)) {
-            char message[MAX_MSG_LEN];
-            ssize_t message_size = unpack_message(socket_fd, message, sizeof(message));
-            if (message_size <= 0) {
-                printf("[Client] Server has disconnected\n");
-                break;
-            }
-            printf("[Client]: Recieved message from server: \"%s\"\n", message);
+        if (!FD_ISSET(socket_fd, &read_fds))
+            continue;
+
+        Message m = unpack_message(socket_fd);
+
+        if (m.type == DISCONNECT) {
+            printf("[Client] Server has disconnected\n");
+            break;
         }
+
+        switch (m.type) {
+        case INVALID:
+            printf("[ERROR] Invalid message received from server");
+            continue;
+        case ACTIVITY:
+            continue;
+        case MESSAGE:
+            if (m.type_data.message.type == SEND) {
+                printf("[ERROR] SEND message type received from server. Ignoring");
+                free(m.type_data.message.content.data);
+                continue;
+            }
+            break;
+        default:
+            break;
+        }
+
+        printf(
+            "[Client]: Recieved message from server: \"%s\"\n", m.type_data.message.content.data);
+
+        free(m.type_data.message.content.data);
     }
 
     return 0;
