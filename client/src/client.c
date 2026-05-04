@@ -1,9 +1,10 @@
 #include "client.h"
+#include <stdio.h>
 #include <ui.h>
 
 volatile sig_atomic_t running = 1;
 
-int connect_to_server(char *ip_addr) {
+int connect_to_server(char* ip_addr) {
     // Create socket
     printf("\t[Client] Creating socket...\n");
     int socket_fd = socket(AF_INET, SOCK_STREAM, 0);
@@ -23,7 +24,7 @@ int connect_to_server(char *ip_addr) {
 
     // Connect to socket
     printf("\t[Client] Connecting to socket...\n");
-    if (connect(socket_fd, (struct sockaddr *)&addr, sizeof(addr)) < 0) {
+    if (connect(socket_fd, (struct sockaddr*)&addr, sizeof(addr)) < 0) {
         perror("[Error] Failed to connect to server");
         exit(1);
     }
@@ -32,19 +33,7 @@ int connect_to_server(char *ip_addr) {
     return socket_fd;
 }
 
-int main(int argc, char *argv[]) {
-    if (argc != 2) {
-        perror("IP address of server must be provided as first argument");
-        return 1;
-    }
-
-    printf("[Client] Trying to connect to server...\n");
-    setup_signal_handler();
-    int socket_fd = connect_to_server(argv[1]);
-    printf("[Client] Connected to server\n\n");
-
-    start_ui_app(socket_fd);
-
+static int start_cli(int socket_fd) {
     // Main loop
     fd_set read_fds;
     while (running) {
@@ -62,14 +51,14 @@ int main(int argc, char *argv[]) {
                 break;
             }
         }
-        
+
         // Signal from STDIN
         if (FD_ISSET(STDIN_FILENO, &read_fds)) {
             char input[MAX_MSG_LEN];
             if (fgets(input, sizeof(input), stdin) == NULL) { // Get input
                 perror("[ERROR] Something went wrong reading input\n");
                 break;
-            } 
+            }
             input[strcspn(input, "\n")] = '\0'; // Add terminator
             if (send_message(socket_fd, input) < 0) { // Send to server
                 printf("[Client] Failed to send, server may be down\n");
@@ -98,4 +87,31 @@ int main(int argc, char *argv[]) {
     printf("[Client] Disconnected\n");
 
     return 0;
+}
+
+int main(int argc, char* argv[]) {
+    if (argc < 2) {
+        perror("IP address of server must be provided as first argument");
+        return 1;
+    }
+
+    printf("[Client] Trying to connect to server...\n");
+    setup_signal_handler();
+    int socket_fd = 0; // connect_to_server(argv[1]);
+    printf("[Client] Connected to server\n\n");
+
+    bool use_cli = false;
+    if (argc >= 3) {
+        if (strcmp(argv[2], "-cli") == 0) {
+            use_cli = true;
+        } else {
+            printf("[CLIENT] [ERROR] - Unrecognized argument provided %s\n", argv[2]);
+        }
+    }
+
+    if (!use_cli) {
+        return start_ui_app(socket_fd);
+    } else {
+        return start_cli(socket_fd);
+    }
 }
