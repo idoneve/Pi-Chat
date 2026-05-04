@@ -21,6 +21,7 @@ run_server: $(SERVER_TARGET)
 run_client: $(CLIENT_TARGET)
 	./$(CLIENT_TARGET) $(IP_ADDRESS)
 
+# clean
 clean:
 	rm -rf bin
 	make clean -C ./server/
