@@ -1,4 +1,5 @@
 #include "client.h"
+#include <ui.h>
 
 volatile sig_atomic_t running = 1;
 
@@ -41,6 +42,8 @@ int main(int argc, char *argv[]) {
     setup_signal_handler();
     int socket_fd = connect_to_server(argv[1]);
     printf("[Client] Connected to server\n\n");
+
+    start_ui_app(socket_fd);
 
     // Main loop
     fd_set read_fds;

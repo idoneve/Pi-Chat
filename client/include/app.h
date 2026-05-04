@@ -6,7 +6,9 @@
 #include "chat.h"
 #include "clay.h"
 #include "raylib.h"
+#include <netinet/in.h>
 #include <stddef.h>
+#include <sys/select.h>
 #include <ui_models.h>
 
 // Contains UI rendering and interaction related data
@@ -32,24 +34,13 @@ typedef struct {
     } fonts;
 } AppResources;
 
-// Represents a message
-typedef struct {
-    // Message data
-    struct {
-        char* data;
-        size_t len;
-    } content;
-
-    // Readable Ip Source
-    char* source;
-} Message;
-
 // Represents a connection
 typedef struct {
     // Messages
     struct {
-        Message* data;
+        ClientMessage* data;
         size_t len;
+        size_t cap;
     } messages;
 
     struct {
@@ -59,7 +50,7 @@ typedef struct {
     } user_input;
 
     // Readable name of ip destination
-    char* dest;
+    char dest[INET_ADDRSTRLEN];
     bool is_active;
 } Connection;
 
@@ -68,6 +59,7 @@ typedef struct {
     struct {
         Connection* data;
         size_t len;
+        size_t cap;
         size_t selected;
     } connections;
     struct {
@@ -80,11 +72,13 @@ Clay_RenderCommandArray get_layout(const AppResources* resources, AppModel* mode
 
 void update_app_state(AppState* state);
 
-void update_app_model(AppModel* model);
+void update_app_model(int socket_fd, AppModel* model);
 
 AppState initialize_app(Font* fonts);
 
 void reinitialize_app(AppState* state);
+
+void uninitialize_app(void); 
 
 AppResources load_resources(Font* fonts, size_t font_count);
 void unload_resources(AppResources* resources);
@@ -92,3 +86,6 @@ void unload_resources(AppResources* resources);
 void draw_app(Clay_RenderCommandArray render_commands, const AppResources* resources);
 
 void HandleClayErrors(Clay_ErrorData);
+
+AppModel init_app_model(void);
+void deinit_app_model(AppModel*);

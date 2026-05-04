@@ -19,6 +19,7 @@ int start_ui_app(int socket_fd) {
     printf("[CLIENT] Loading Resources\n");
     AppResources resources = load_resources(fonts, 2);
 
+    // ---  DEBUG DATA ---
     Message messages1[5] = {
         (Message) { .source = NULL, .content = { "Test message", 12 } },
         (Message) { .source = "192.168.0.255", .content = { .data = "Does this", .len = 9 } },
@@ -27,7 +28,6 @@ int start_ui_app(int socket_fd) {
         (Message) { .source = NULL, .content = { "but who freakin knows", 21 } },
     };
 
-    // ---  DEBUG DATA ---
     Connection connections[2] = {
         (Connection) { .messages = {
             .data = messages1,

@@ -11,7 +11,7 @@
 #include <string.h>
 #include <sys/types.h>
 
-void chat_message(size_t index, const Message* message) {
+void chat_message(size_t index, const ClientMessage* message) {
     CLAY({
             .id = CLAY_IDI("ChatMessage", index),
             .layout = { 

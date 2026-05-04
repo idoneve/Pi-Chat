@@ -28,6 +28,29 @@
 #define EXIT_ACCEPT     4
 #define EXIT_CONNECT    5
 
+// Represents a message
+typedef struct {
+    // Message data
+    struct {
+        char* data;
+        size_t len;
+    } content;
+
+    // Readable Ip Source
+    char source[INET_ADDRSTRLEN];
+} ClientMessage;
+
+typedef struct {
+    enum {
+        ACTIVITY,
+        MESSAGE,
+    } type;
+
+    union {
+        ClientMessage message;
+    } data;
+} Message;
+
 // Shutdown flag for signal handling
 extern volatile sig_atomic_t running;
 
