@@ -40,7 +40,6 @@ static int reload_fds(int socket_fd, fd_set* read_fds) {
     FD_SET(socket_fd, read_fds); // Watch socket
                                  //
     int max_fd = (STDIN_FILENO > socket_fd) ? STDIN_FILENO : socket_fd;
-    printf("[Client] Waiting for input...\n");
     return max_fd;
 }
 
@@ -49,7 +48,6 @@ static int start_cli(int socket_fd) {
     fd_set read_fds;
     while (running) {
         int max_fd = reload_fds(socket_fd, &read_fds);
-        is_signal_ready(max_fd, &read_fds);
 
         SignalResponse signal_respnse;
         if ((signal_respnse = is_signal_ready(max_fd, &read_fds)) != SIGNAL) {
