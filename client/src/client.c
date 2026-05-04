@@ -1,5 +1,4 @@
 #include "client.h"
-#include "app.h"
 #include <complex.h>
 #include <netinet/in.h>
 #include <stddef.h>
