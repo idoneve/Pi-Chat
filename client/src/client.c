@@ -49,37 +49,53 @@ static int start_cli(int socket_fd) {
     while (running) {
         int max_fd = reload_fds(socket_fd, &read_fds);
 
-        SignalResponse signal_respnse;
-        if ((signal_respnse = is_signal_ready(max_fd, &read_fds)) != SIGNAL) {
-            if (signal_respnse == INTERUPT) {
+        printf("[CLIENT] Waiting for input.\n");
+
+        printf("[CLIENT] Enter Destination Address\n->");
+        fflush(stdout);
+        SignalResponse signal_response;
+        if ((signal_response = is_signal_ready(max_fd, &read_fds)) != SIGNAL) {
+            if (signal_response == INTERUPT) {
                 continue;
             }
-            if (signal_respnse == FD_ERROR) {
+            if (signal_response == FD_ERROR) {
                 perror("[ERROR] Failed to select fd with data\n");
                 break;
             }
         }
 
+
         // Signal from STDIN
         if (FD_ISSET(STDIN_FILENO, &read_fds)) {
             char addr[INET_ADDRSTRLEN];
-
-            printf("[CLIENT] Enter Destination Address: ");
-            fflush(stdout);
 
             if (fgets(addr, sizeof(addr), stdin) == NULL) { // Get input
                 perror("[ERROR] Something went wrong reading input\n");
                 break;
             }
+            addr[strcspn(addr, "\n")] = '\0'; // Add terminator
+            printf("[CLIENT] Input received address %s\n", addr);
+
+            struct in_addr dummy;
+            if (inet_pton(AF_INET, addr, &dummy) != 1){
+                printf("[ERROR] Input was not a valid address\n");
+                continue; // not a valid IPv4 address
+            }
 
             char input[MAX_MSG_LEN];
-            printf("[CLIENT] Enter Message: ");
+            printf("[CLIENT] Enter Message\n->");
             fflush(stdout);
             if (fgets(input, sizeof(input), stdin) == NULL) { // Get input
                 perror("[ERROR] Something went wrong reading input\n");
                 break;
             }
             input[strcspn(input, "\n")] = '\0'; // Add terminator
+                                                //
+            printf("[CLIENT] Input received messsage %s\n", addr);
+
+            if (strlen(input) == 0)
+                continue; // ignore empty reads, go back to select
+
             ClientMessage c = {
                 .content = {
                     .data = input,
