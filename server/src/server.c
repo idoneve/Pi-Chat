@@ -201,10 +201,6 @@ static void check_for_messages(Connections* connections, fd_set* read_fds) {
         }
 
         ClientMessage* client_message = &message.type_data.message;
-        if (client_message->type != SEND) {
-            printf("[SERVER] unexpected RECEIVE message type received by server\n");
-            return;
-        }
 
         if (route_message(i, connections, client_message) < 0){
             printf("[SERVER] failed to route message");
