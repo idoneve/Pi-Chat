@@ -29,7 +29,7 @@
 #define EXIT_CONNECT    5
 
 // Shutdown flag for signal handling
-volatile sig_atomic_t running;
+extern volatile sig_atomic_t running;
 
 static inline void kill_sig(int sig) {
     (void)sig;

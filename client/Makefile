@@ -1,5 +1,5 @@
 # C Version
-CSTD ?= c11
+CSTD ?= c23
 
 # File names
 MAKENAME ?= Makefile
@@ -14,7 +14,7 @@ ifeq ($(shell uname -s),Darwin)
   CC = clang
   CFLAGS = -D_FORTIFY_SOURCE=2 -fstack-protector-all -g -$(OPTIMIZER) -std=$(CSTD) \
          -Wall -Wextra -Wpedantic -Wshadow -Winit-self -Wpointer-arith \
-         -Wcast-qual -D_POSIX_C_SOURCE=199309L
+         -Wcast-qual -D_POSIX_C_SOURCE=200809L
   RAYLIB = ./lib/raylib-5.5_macos/libraylib.a
 else
   CC = gcc
@@ -25,32 +25,29 @@ else
          -Wshadow -Wunused-const-variable=1 -Wlogical-op \
          -Wpointer-arith -Wcast-qual -Wconversion \
          -Wstrict-prototypes -Wmissing-prototypes \
-         -Wsign-conversion -Wdouble-promotion -D_POSIX_C_SOURCE=199309L
+         -Wsign-conversion -Wdouble-promotion -D_POSIX_C_SOURCE=200809L
   RAYLIB = ./lib/raylib-5.5_linux_amd64/libraylib.a
 endif
 
 TARGET = bin/client
 IP_ADDRESS ?= 127.0.0.1
 
-SRC := $(wildcard .src/*.c)
+SRC := $(wildcard ./src/*.c)
 OBJ = $(SRC:.c=.o)
 
 # Headers
 LOCAL_INCLUDE = ./include/
-SHARED_INCLUDE = ./../include/
+SHARED_INCLUDE = ../include/
 
 all: $(TARGET)
 
-# bin/client: $(CLIENT_SRC) | bin
-# 	$(CC) $(CFLAGS) -I$(LOCAL_INCLUDE) -I$(SHARED_INCLUDE) -o $@ $(CLIENT_SRC)
-
 # Link
-$(TARGET): $(OBJ)
-	$(GPP) $(GPPFlags) $(OBJ) -o $(TARGET) $(RAYLIB)  -lm
+$(TARGET): $(OBJ) | bin
+	$(CC) $(CFLAGS) $(OBJ) -o $(TARGET) $(RAYLIB) -lm  -I$(SHARED_INCLUDE) -I$(LOCAL_INCLUDE)
 
 # Compile
 %.o: %.c
-	$(GPP) $(GPPFlags) -c $< -o $@ -I$(INCLUDE) -I$(SHARED_INCLUDE)
+	$(CC) $(CFLAGS) -c $< -o $@ -I$(SHARED_INCLUDE) -I$(LOCAL_INCLUDE)
 
 bin:
 	mkdir -p bin
