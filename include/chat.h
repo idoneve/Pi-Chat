@@ -58,6 +58,12 @@ typedef struct {
     } type_data;
 } Message;
 
+typedef struct {
+    char ip[INET_ADDRSTRLEN];
+    int fd;
+    bool active;
+} Connection;
+
 // Shutdown flag for signal handling
 extern volatile sig_atomic_t running;
 

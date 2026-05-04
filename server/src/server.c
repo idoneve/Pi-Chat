@@ -10,12 +10,6 @@
 
 volatile sig_atomic_t running = 1;
 
-typedef struct {
-    char ip[INET_ADDRSTRLEN];
-    int fd;
-    bool active;
-} Connection;
-
 static void bind_socket(int server_fd) {
     printf("\t[Server] Binding socket...\n");
     struct sockaddr_in addr = configure_socket();
