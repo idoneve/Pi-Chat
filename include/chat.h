@@ -209,13 +209,13 @@ static struct sockaddr_in configure_socket() {
 typedef enum {
     FD_ERROR,
     SIGNAL,
-    INTERUPT,
+    INTERRUPT,
 } SignalResponse;
 
 static SignalResponse is_signal_ready(int max_fd, fd_set* read_fds) {
     if (select(max_fd + 1, read_fds, NULL, NULL, NULL) < 0) {
         if (errno == EINTR) {
-            return INTERUPT; // ctrl+C was pressed
+            return INTERRUPT; // ctrl+C was pressed
         } else {
             return FD_ERROR;
         }

@@ -55,7 +55,7 @@ static int start_cli(int socket_fd) {
         fflush(stdout);
         SignalResponse signal_response;
         if ((signal_response = is_signal_ready(max_fd, &read_fds)) != SIGNAL) {
-            if (signal_response == INTERUPT) {
+            if (signal_response == INTERRUPT) {
                 continue;
             }
             if (signal_response == FD_ERROR) {

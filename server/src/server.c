@@ -227,7 +227,7 @@ int main(void) {
         printf("[Server] Waiting for signal...\n");
         SignalResponse signal_respnse;
         if ((signal_respnse = is_signal_ready(max_fd, &read_fds)) != SIGNAL) {
-            if (signal_respnse == INTERUPT) {
+            if (signal_respnse == INTERRUPT) {
                 continue;
             }
             if (signal_respnse == FD_ERROR) {
