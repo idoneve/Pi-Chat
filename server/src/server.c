@@ -176,6 +176,7 @@ static void check_for_messages(
     for (size_t i = 0; i < active_connections; ++i) {
 
         if (!FD_ISSET(connections[i].fd, read_fds))
+            // Connection has no new messages
             continue;
 
         printf("\t[Server] Client (fd %d) is sending a signal...\n", connections[i]);
