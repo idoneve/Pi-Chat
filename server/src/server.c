@@ -179,7 +179,7 @@ static void check_for_messages(
             // Connection has no new messages
             continue;
 
-        printf("\t[Server] Client (fd %d) is sending a signal...\n", connections[i]);
+        printf("\t[Server] Client (fd %d) is sending a signal...\n", connections[i].fd);
 
         char buf[HEADER_SIZE + MAX_MSG_LEN];
 
@@ -192,7 +192,7 @@ static void check_for_messages(
             // MARK CONNECTION AS ACTIVE
             return;
         case DISCONNECT:
-            printf("\t[Server] Client (fd %d) has disconnected\n", connections[i]);
+            printf("\t[Server] Client (fd %d) has disconnected\n", connections[i].fd);
             connections[i] = connections[--active_connections];
             return;
         case MESSAGE:
@@ -201,7 +201,7 @@ static void check_for_messages(
 
         ClientMessage* client_message = &message.type_data.message;
         if (client_message->type != SEND) {
-            printf("[SERVER] unexpected message type received");
+            printf("[SERVER] unexpected message type received\n");
             return;
         }
 
