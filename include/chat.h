@@ -149,11 +149,11 @@ static inline Message unpack_message(int fd) {
     result.type = (MessageType)*type;
 
     if (result.type == ACTIVITY) {
-        printf("[DEBUG] Received activity message");
+        printf("[DEBUG] Received activity message\n");
         return result;
     }
 
-    printf("[DEBUG] Received regular message");
+    printf("[DEBUG] Received regular message\n");
 
     char dest_buf[HEADER_ADDR_SIZE];
     n = recv(fd, dest_buf, HEADER_ADDR_SIZE, 0);
@@ -167,7 +167,7 @@ static inline Message unpack_message(int fd) {
         return (Message) { .type = INVALID };
     }
 
-    printf("[DEBUG] destination address %s received", dest_buf);
+    printf("[DEBUG] destination address %s received\n", dest_buf);
 
     // Copy address into receive ClientMessage
     result.type_data.message = (ClientMessage) { .type = RECEIVE };
@@ -188,7 +188,7 @@ static inline Message unpack_message(int fd) {
     if (msg_len <= 0 || msg_len >= MAX_MSG_LEN)
         return (Message) { .type = INVALID };
 
-    printf("[DEBUG] message length %d received", msg_len);
+    printf("[DEBUG] message length %d received\n", msg_len);
 
     result.type_data.message.content.len = msg_len;
     char** msg_data = &result.type_data.message.content.data;
@@ -209,7 +209,7 @@ static inline Message unpack_message(int fd) {
     }
     (*msg_data)[msg_len] = '\0';
 
-    printf("[DEBUG] message %s received", *msg_data);
+    printf("[DEBUG] message %s received\n", *msg_data);
 
     return result;
 }
