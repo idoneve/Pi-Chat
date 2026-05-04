@@ -54,13 +54,11 @@ AppResources load_resources(Font* fonts, size_t font_count) {
     }
 
     return (AppResources) {
-        .profilePicture = LoadTexture("resources/profile-picture.png"),
         .fonts = { .data = fonts, .len = font_count },
     };
 }
 
 void unload_resources(AppResources* resources) {
-    UnloadTexture(resources->profilePicture);
     for (size_t i = 0; i < resources->fonts.len; i++) {
         UnloadFont(resources->fonts.data[i]);
     }
