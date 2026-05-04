@@ -104,7 +104,7 @@ static int start_cli(int socket_fd) {
                 .type = SEND,
             };
 
-            memcpy(c.type_data.send_dest, addr, HEADER_ADDR_SIZE);
+            memcpy(c.ip, addr, HEADER_ADDR_SIZE);
 
             if (send_message(socket_fd, &c) < 0) { // Send to server
                 printf("[Client] Failed to send, server may be down\n");
