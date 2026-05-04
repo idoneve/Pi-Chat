@@ -73,6 +73,8 @@ static int load_connections(
     FD_SET(server_fd, read_fds); // Load server into reader
     int max_fd = server_fd;
     for (size_t i = 0; i < connections->len; ++i) {
+        if (!connections->data[i].active) continue;
+
         FD_SET(connections->data[i].fd, read_fds); // Load clients into reader
         if (connections->data[i].fd > max_fd) {
             max_fd = connections->data[i].fd;
