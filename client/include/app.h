@@ -22,7 +22,7 @@ typedef struct {
         Clay_Vector2 scroll;
     } mouse;
 
-    double deltaTime;
+    float deltaTime;
 } AppState;
 
 // Contains any external data needed for the app (Fonts, Images, Etc)

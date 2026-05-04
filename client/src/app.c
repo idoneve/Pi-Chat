@@ -23,8 +23,8 @@ AppState initialize_app(Font* fonts) {
         FLAG_WINDOW_RESIZABLE | FLAG_WINDOW_HIGHDPI | FLAG_MSAA_4X_HINT | FLAG_VSYNC_HINT);
 
     Clay_Dimensions dimensions = (Clay_Dimensions) {
-        .width = GetScreenWidth(),
-        .height = GetScreenHeight(),
+        .width = (float)GetScreenWidth(),
+        .height = (float)GetScreenHeight(),
     };
 
     Vector2 mousePosition = GetMousePosition();
@@ -85,7 +85,7 @@ void update_app_state(AppState* state) {
     Vector2 mouseScroll = GetMouseWheelMoveV();
 
     state->screenDimensions
-        = (Clay_Dimensions) { .width = GetScreenWidth(), .height = GetScreenHeight() };
+        = (Clay_Dimensions) { .width = (float)GetScreenWidth(), .height = (float)GetScreenHeight() };
 
     state->mouse.position = (Clay_Vector2) { .x = mousePosition.x, .y = mousePosition.y };
     state->mouse.scroll = (Clay_Vector2) { .x = mouseScroll.x, .y = mouseScroll.y };
