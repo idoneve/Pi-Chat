@@ -7,13 +7,14 @@
 #include <components.h>
 #include <netinet/in.h>
 #include <stddef.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <string.h>
 #include <sys/types.h>
 
 static void chat_message(size_t index, const ClientMessage* message) {
     CLAY({
-            .id = CLAY_IDI("ChatMessage", index),
+            .id = CLAY_IDI("ChatMessage", (uint32_t)index),
             .layout = { 
                 .padding = CLAY_PADDING_ALL(PADDING_CHAT_MESSAGE_SURROUND),
                 .layoutDirection = CLAY_TOP_TO_BOTTOM,
@@ -24,10 +25,10 @@ static void chat_message(size_t index, const ClientMessage* message) {
         }}) {
 
         // Sender Name
-        char* sender_id = message->type == SEND ? "Me" : message->type_data.receive_source;
+        const char* sender_id = message->type == SEND ? "Me" : message->ip;
         CLAY_TEXT(((Clay_String) {
                       .chars = sender_id,
-                      .length = strlen(sender_id),
+                      .length = (int32_t)strlen(sender_id),
                       .isStaticallyAllocated = message->type == SEND,
                   }),
             CLAY_TEXT_CONFIG({ .textAlignment
@@ -37,17 +38,17 @@ static void chat_message(size_t index, const ClientMessage* message) {
                 .fontId = ID_CHAT_FONT,
                 .fontSize = SIZE_CHAT_FONT }));
 
-        CLAY({ .id = CLAY_IDI("ChatMessageBubble", index),
+        CLAY({ .id = CLAY_IDI("ChatMessageBubble", (uint32_t)index),
             .layout = { .padding = CLAY_PADDING_ALL(PADDING_CHAT_MESSAGE_TEXT),
                 .layoutDirection = CLAY_TOP_TO_BOTTOM,
-                .sizing = { .width = CLAY_SIZING_PERCENT(.33), .height = CLAY_SIZING_FIT() }, 
+                .sizing = { .width = CLAY_SIZING_PERCENT(.33F), .height = CLAY_SIZING_FIT() }, 
             },
             .backgroundColor = COLOR_CHAT_MESSAGE_BACKGROUND,
             .cornerRadius = CLAY_CORNER_RADIUS(CORNER_RADIUS_CHAT_MESSAGE) }) {
 
             CLAY_TEXT(((Clay_String) {
                           .chars = message->content.data,
-                          .length = message->content.len,
+                          .length = (int32_t)message->content.len,
                           .isStaticallyAllocated = false,
                       }),
                 CLAY_TEXT_CONFIG({
@@ -84,7 +85,7 @@ static size_t empty_buffer(char* data, size_t len) {
     return 0;
 }
 
-static void handle_text_input(Connection* selected) {
+static void handle_text_input(ClientConnection* selected) {
     char* user_input = selected->user_input.data;
     size_t* input_len = &selected->user_input.len;
     size_t* cursor = &selected->user_input.cursor;
@@ -93,7 +94,7 @@ static void handle_text_input(Connection* selected) {
     int key;
     if ((key = GetCharPressed()) != 0) {
 
-        *input_len = append_to_buffer(key, user_input, *input_len, input_cap);
+        *input_len = append_to_buffer((char)key, user_input, *input_len, input_cap);
 
     } else if ((key = GetKeyPressed()) != 0) {
         switch (key) {
@@ -145,14 +146,14 @@ static void message_entry(AppModel* model) {
         .clip = {.vertical = true, .horizontal = false, .childOffset = Clay_GetScrollOffset()}
     }) {
         if (model->connections.len != 0) {
-            Connection* selected = &model->connections.data[model->connections.selected];
+            ClientConnection* selected = &model->connections.data[model->connections.selected];
 
             handle_text_input(selected);
 
             // TODO handle cursor rendering
             CLAY_TEXT(((Clay_String) {
                           .chars = selected->user_input.data,
-                          .length = selected->user_input.len,
+                          .length = (int32_t)selected->user_input.len,
                           .isStaticallyAllocated = false,
                       }),
                 CLAY_TEXT_CONFIG({
@@ -187,7 +188,7 @@ static void submit_button(AppModel* model) {
 
             if (Clay_Hovered() && IsMouseButtonPressed(MOUSE_BUTTON_LEFT)
                 && model->connections.len != 0) {
-                Connection* selected = &model->connections.data[model->connections.selected];
+                ClientConnection* selected = &model->connections.data[model->connections.selected];
 
                 // TODO send message
                 selected->user_input.len = 0;
@@ -222,7 +223,7 @@ void chat_window(AppModel* model) {
                 .childAlignment = { .y = CLAY_ALIGN_Y_TOP } } }) {
 
             if (model->connections.len != 0) {
-                Connection* active_connection
+                ClientConnection* active_connection
                     = &model->connections.data[model->connections.selected];
 
                 for (size_t i = 0; i < active_connection->messages.len; i++) {
@@ -251,7 +252,7 @@ static void connection_tab(size_t* selected, const TabModel* model) {
     Clay_Color background
         = (model->index == *selected) ? COLOR_SIDEBAR_TAB_ACTIVE : COLOR_SIDEBAR_TAB_INACTIVE;
 
-    CLAY({ .id = CLAY_IDI("ConnectionTab", model->index),
+    CLAY({ .id = CLAY_IDI("ConnectionTab", (uint32_t)model->index),
         .backgroundColor = Clay_Hovered() ? COLOR_SIDEBAR_TAB_HOVERED : background,
         .cornerRadius = CLAY_CORNER_RADIUS(10),
         .layout = { .layoutDirection = CLAY_LEFT_TO_RIGHT,
@@ -263,7 +264,7 @@ static void connection_tab(size_t* selected, const TabModel* model) {
         }
 
         CLAY_TEXT(((Clay_String) { .chars = model->title,
-                      .length = strnlen(model->title, INET_ADDRSTRLEN),
+                      .length = (int32_t)strnlen(model->title, INET_ADDRSTRLEN),
                       .isStaticallyAllocated = false }),
             CLAY_TEXT_CONFIG({
                 .textColor = COLOR_SIDEBAR_TAB_TEXT,
@@ -275,7 +276,7 @@ static void connection_tab(size_t* selected, const TabModel* model) {
         Clay_Color status_background = model->is_active ? COLOR_SIDEBAR_TAB_ACTIVE_CONNECTION
                                                         : COLOR_SIDEBAR_TAB_INACTIVE_CONNECTION;
         CLAY({
-            .id = CLAY_IDI("StatusCircle", model->index),
+            .id = CLAY_IDI("StatusCircle", (uint32_t)model->index),
             .cornerRadius = CLAY_CORNER_RADIUS(.5),
             .layout = { .sizing = { .width = CLAY_SIZING_FIXED(SIZE_SIDEBAR_TAB_STATUS),
                             .height = CLAY_SIZING_FIXED(SIZE_SIDEBAR_TAB_STATUS) } },
