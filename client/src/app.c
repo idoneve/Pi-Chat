@@ -137,7 +137,7 @@ Connection* map_message_to_connection(AppModel* model, ClientMessage* message) {
     Connection* match = NULL;
     for (size_t i = 0; i < model->connections.len; i++) {
 
-        if (strcmp(model->connections.data[i].dest, message->source)) {
+        if (strcmp(model->connections.data[i].dest, message->source) == 0) {
             match = &model->connections.data[i];
         }
     }
