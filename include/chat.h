@@ -42,7 +42,7 @@ typedef struct {
 
     enum { RECEIVE, SEND } type;
 
-    //Holds destination when type is send, holds source when type is receive
+    // Holds destination when type is send, holds source when type is receive
     char ip[INET_ADDRSTRLEN];
 
     // Readable Ip Source
@@ -64,6 +64,38 @@ typedef struct {
     bool active;
 } Connection;
 
+typedef struct {
+    Connection* data;
+    size_t len;
+    size_t cap;
+} Connections;
+
+static Connections init_connections() {
+    return (Connections) {
+        .data = malloc(sizeof(Connection) * 2),
+        .len = 0,
+        .cap = 2,
+    };
+}
+
+static void deinit_connections(Connections* connections) {
+    free(connections->data);
+    connections->data = NULL;
+    connections->len = 0;
+    connections->cap = 0;
+}
+
+static void add_connection(Connections* connections, Connection connection) {
+    if (connections->len == connections->cap) {
+        Connection* old_data = connections->data;
+
+        connections->cap *= 2;
+        connections->data = malloc(sizeof(Connection) * connections->cap);
+    }
+
+    connections->data[connections->len] = connection;
+}
+
 // Shutdown flag for signal handling
 extern volatile sig_atomic_t running;
 
@@ -81,8 +113,7 @@ static inline void setup_signal_handler(void) {
 }
 
 // Pack a message with length prefix, returns total bytes to send
-static inline ssize_t pack_message(
-    const ClientMessage* message, char* out_buf, size_t buf_size) {
+static inline ssize_t pack_message(const ClientMessage* message, char* out_buf, size_t buf_size) {
     if (message->content.len + HEADER_SIZE > buf_size)
         return -1; // msg too big
 
@@ -168,7 +199,6 @@ static inline Message unpack_message(int fd) {
         total += n;
     }
     (*msg_data)[msg_len] = '\0';
-    
 
     return result;
 }
