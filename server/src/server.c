@@ -130,11 +130,12 @@ static ssize_t accept_clients(
 
         connections[active_connections] = (Connection) {
             .fd = client_fd,
+            .active = true,
         };
         memcpy(connections[active_connections].ip, ip, INET_ADDRSTRLEN);
 
         active_connections += 1;
-        printf("\t[Server] Client connection accepted (fd %d)\n", client_fd);
+        printf("\t[Server] Client connection accepted (fd %d: ip %s)\n", client_fd, ip);
         return (ssize_t)active_connections;
     }
 }
