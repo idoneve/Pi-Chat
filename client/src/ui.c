@@ -4,25 +4,22 @@
 #include <clay.h>
 #include <components.h>
 #include <ui.h>
-#include "style.h"
 #include "raylib.h"
 
 bool reinitializeClay = false;
 
 int start_ui_app(int socket_fd) {
-    Font fonts[2];
-    fonts[REGULAR_24] = LoadFontEx("./resources/Roboto-Regular.ttf", 48, NULL, 0);
-    fonts[MONO_16] = LoadFontEx("./resources/RobotoMono-Medium.ttf", 32, NULL, 0);
-
     printf("[CLIENT] Initializing App\n");
-    AppState state = initialize_app(fonts);
-    printf("[CLIENT] Loading Resources\n");
-    AppResources resources = load_resources(fonts, 2);
+    AppState state = initialize_app(NULL);
+    printf("[CLIENT] Done Initializing App\n");
 
+    printf("[CLIENT] Loading Resources\n");
+    AppResources* resources = load_resources();
+
+    printf("[CLIENT] Initializing App Model\n");
     AppModel model = init_app_model();
 
     bool enable_debug_mode = false;
-    // -------------------
 
     printf("[CLIENT] Beginning Render Loop\n");
     while (!WindowShouldClose()) {
@@ -37,13 +34,13 @@ int start_ui_app(int socket_fd) {
         }
 
         update_app_state(&state);
-        update_app_model(socket_fd,&model);
-        Clay_RenderCommandArray render_commands = get_layout(&resources, &model);
-        draw_app(render_commands, &resources);
+        update_app_model(socket_fd, &model);
+        Clay_RenderCommandArray render_commands = get_layout(resources, &model);
+        draw_app(render_commands, resources);
     }
     printf("[CLIENT] Ending Render Loop. Cleaning up UI data.\n");
 
-    unload_resources(&resources);
+    unload_resources(resources);
     deinit_app_model(&model);
     uninitialize_app();
 

@@ -49,7 +49,7 @@ OBJ = $(SRC:.c=.o)
 LOCAL_INCLUDE = ./include/
 SHARED_INCLUDE = ../include/
 
-all: $(TARGET) clean
+all: reset $(TARGET) clean
 
 # Link
 $(TARGET): $(OBJ) | bin
