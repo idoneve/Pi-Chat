@@ -14,7 +14,7 @@
 // Contains UI rendering and interaction related data
 typedef struct {
     Clay_Arena arena;
-    uint32_t memorySize;
+    uint64_t memorySize;
     Clay_Dimensions screenDimensions;
 
     struct {
