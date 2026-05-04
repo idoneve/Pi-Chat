@@ -44,6 +44,7 @@ all: $(TARGET)
 # Link
 $(TARGET): $(OBJ) | bin
 	$(CC) $(CFLAGS) $(OBJ) -o $(TARGET) $(RAYLIB) -lm  -I$(SHARED_INCLUDE) -I$(LOCAL_INCLUDE)
+	rm -f $(OBJ)
 
 # Compile
 %.o: %.c
@@ -57,6 +58,5 @@ run_client: $(TARGET)
 
 clean:
 	rm -rf bin
-	rm -f $(OBJ)
 
-.PHONY: all run_client clean
+.PHONY: all run_client clean reset
