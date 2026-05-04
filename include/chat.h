@@ -1,6 +1,7 @@
 #ifndef CHAT_H
 #define CHAT_H
 
+#include "stdbool.h"
 #include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -91,7 +92,7 @@ static void add_connection(Connections* connections, Connection connection) {
 
         connections->cap *= 2;
         connections->data = malloc(sizeof(Connection) * connections->cap);
-        memcpy(connections->data, old_data, connections->len);
+        memcpy(connections->data, old_data, connections->len * sizeof(Connection));
         free(old_data);
     }
 

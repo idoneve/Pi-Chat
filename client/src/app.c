@@ -153,7 +153,7 @@ static ClientConnection* map_message_to_connection(AppModel* model, ClientMessag
             model->connections.cap = model->connections.len * 2;
             model->connections.data = malloc(sizeof(ClientConnection) * model->connections.cap);
 
-            memcpy(model->connections.data, old_data, model->connections.len);
+            memcpy(model->connections.data, old_data, model->connections.len * sizeof(ClientConnection));
             free(old_data);
         }
 
