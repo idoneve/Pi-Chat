@@ -11,7 +11,7 @@
 #include <string.h>
 #include <sys/types.h>
 
-void chat_message(size_t index, const ClientMessage* message) {
+static void chat_message(size_t index, const ClientMessage* message) {
     CLAY({
             .id = CLAY_IDI("ChatMessage", index),
             .layout = { 
@@ -60,7 +60,7 @@ void chat_message(size_t index, const ClientMessage* message) {
     }
 }
 
-size_t append_to_buffer(char new_char, char* data, size_t len, size_t cap) {
+static size_t append_to_buffer(char new_char, char* data, size_t len, size_t cap) {
     if (len == cap)
         return len;
 
@@ -68,7 +68,7 @@ size_t append_to_buffer(char new_char, char* data, size_t len, size_t cap) {
     return len;
 }
 
-size_t remove_from_buffer(char* data, size_t len, size_t cap) {
+static size_t remove_from_buffer(char* data, size_t len, size_t cap) {
     if (len == 0)
         return 0;
 
@@ -79,12 +79,12 @@ size_t remove_from_buffer(char* data, size_t len, size_t cap) {
     return --len;
 }
 
-size_t empty_buffer(char* data, size_t len) {
+static size_t empty_buffer(char* data, size_t len) {
     memset(data, '\0', len);
     return 0;
 }
 
-void handle_text_input(Connection* selected) {
+static void handle_text_input(Connection* selected) {
     char* user_input = selected->user_input.data;
     size_t* input_len = &selected->user_input.len;
     size_t* cursor = &selected->user_input.cursor;
@@ -130,8 +130,7 @@ void handle_text_input(Connection* selected) {
     return;
 }
 
-void message_entry(AppModel* model) {
-    Connection* selected = &model->connections.data[model->connections.selected];
+static void message_entry(AppModel* model) {
 
     CLAY({
         .id = CLAY_ID("UserInput"),
@@ -145,26 +144,30 @@ void message_entry(AppModel* model) {
         .border = {.width = CLAY_BORDER_OUTSIDE(5), .color = COLOR_LIGHT},
         .clip = {.vertical = true, .horizontal = false, .childOffset = Clay_GetScrollOffset()}
     }) {
-        handle_text_input(selected);
+        if (model->connections.len != 0) {
+            Connection* selected = &model->connections.data[model->connections.selected];
 
-        // TODO handle cursor rendering
-        CLAY_TEXT(((Clay_String) {
-                      .chars = selected->user_input.data,
-                      .length = selected->user_input.len,
-                      .isStaticallyAllocated = false,
-                  }),
-            CLAY_TEXT_CONFIG({
-                .textAlignment = CLAY_TEXT_ALIGN_LEFT,
-                .textColor = COLOR_CHAT_USER_INPUT_TEXT,
-                .wrapMode = CLAY_TEXT_WRAP_WORDS,
-                .fontId = ID_CHAT_USER_INPUT_FONT,
-                .fontSize = SIZE_CHAT_USER_INPUT_FONT,
-                .letterSpacing = SPACING_CHAT_USER_INPUT_FONT,
-            }));
+            handle_text_input(selected);
+
+            // TODO handle cursor rendering
+            CLAY_TEXT(((Clay_String) {
+                          .chars = selected->user_input.data,
+                          .length = selected->user_input.len,
+                          .isStaticallyAllocated = false,
+                      }),
+                CLAY_TEXT_CONFIG({
+                    .textAlignment = CLAY_TEXT_ALIGN_LEFT,
+                    .textColor = COLOR_CHAT_USER_INPUT_TEXT,
+                    .wrapMode = CLAY_TEXT_WRAP_WORDS,
+                    .fontId = ID_CHAT_USER_INPUT_FONT,
+                    .fontSize = SIZE_CHAT_USER_INPUT_FONT,
+                    .letterSpacing = SPACING_CHAT_USER_INPUT_FONT,
+                }));
+        }
     }
 }
 
-void submit_button(AppModel* model) {
+static void submit_button(AppModel* model) {
     CLAY({ .id = CLAY_ID("SubmitButtonContainer"),
         .layout = { .layoutDirection = CLAY_TOP_TO_BOTTOM,
             .sizing = { .width = CLAY_SIZING_FIT(), .height = CLAY_SIZING_GROW() } } }) {
@@ -181,12 +184,15 @@ void submit_button(AppModel* model) {
         .backgroundColor = Clay_Hovered() ? COLOR_CHAT_SUBMIT_BUTTON_HOVERED: COLOR_CHAT_SUBMIT_BUTTON_BACKGROUND,
         .cornerRadius = CLAY_CORNER_RADIUS(CORNER_RADIUS_CHAT_SUBMIT_BUTTON),
     }){
-            if (Clay_Hovered() && IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
+
+            if (Clay_Hovered() && IsMouseButtonPressed(MOUSE_BUTTON_LEFT)
+                && model->connections.len != 0) {
                 Connection* selected = &model->connections.data[model->connections.selected];
 
                 // TODO send message
                 selected->user_input.len = 0;
             }
+
             CLAY_TEXT(CLAY_STRING("Send"),
                 CLAY_TEXT_CONFIG({
                     .textColor = COLOR_CHAT_SUBMIT_BUTTON,
@@ -199,8 +205,6 @@ void submit_button(AppModel* model) {
 }
 
 void chat_window(AppModel* model) {
-    Connection* active_connection = &model->connections.data[model->connections.selected];
-
     CLAY({
         .id = CLAY_ID("ChatWindow"),
         .backgroundColor = COLOR_CHAT_BACKGROUND,
@@ -209,7 +213,6 @@ void chat_window(AppModel* model) {
             .layoutDirection = CLAY_TOP_TO_BOTTOM, 
         }, 
     }) {
-
         CLAY({ .id = CLAY_ID("MessageWindow"),
             .clip
             = { .horizontal = false, .vertical = true, .childOffset = Clay_GetScrollOffset() },
@@ -218,8 +221,13 @@ void chat_window(AppModel* model) {
                 .layoutDirection = CLAY_TOP_TO_BOTTOM,
                 .childAlignment = { .y = CLAY_ALIGN_Y_TOP } } }) {
 
-            for (size_t i = 0; i < active_connection->messages.len; i++) {
-                chat_message(i, &active_connection->messages.data[i]);
+            if (model->connections.len != 0) {
+                Connection* active_connection
+                    = &model->connections.data[model->connections.selected];
+
+                for (size_t i = 0; i < active_connection->messages.len; i++) {
+                    chat_message(i, &active_connection->messages.data[i]);
+                }
             }
         }
 
@@ -237,7 +245,7 @@ void chat_window(AppModel* model) {
     }
 }
 
-void connection_tab(size_t* selected, const TabModel* model) {
+static void connection_tab(size_t* selected, const TabModel* model) {
     // Supports three digit numbers and ": " in between name and index
 
     Clay_Color background
