@@ -149,8 +149,11 @@ static inline Message unpack_message(int fd) {
     result.type = (MessageType)*type;
 
     if (result.type == ACTIVITY) {
+        printf("[DEBUG] Received activity message");
         return result;
     }
+
+    printf("[DEBUG] Received regular message");
 
     char dest_buf[HEADER_ADDR_SIZE];
     n = recv(fd, dest_buf, HEADER_ADDR_SIZE, 0);
@@ -163,6 +166,8 @@ static inline Message unpack_message(int fd) {
     if (n < HEADER_ADDR_SIZE) {
         return (Message) { .type = INVALID };
     }
+
+    printf("[DEBUG] destination address %s received", dest_buf);
 
     // Copy address into receive ClientMessage
     result.type_data.message = (ClientMessage) { .type = RECEIVE };
@@ -183,6 +188,8 @@ static inline Message unpack_message(int fd) {
     if (msg_len <= 0 || msg_len >= MAX_MSG_LEN)
         return (Message) { .type = INVALID };
 
+    printf("[DEBUG] message length %d received", msg_len);
+
     result.type_data.message.content.len = msg_len;
     char** msg_data = &result.type_data.message.content.data;
     *msg_data = malloc(msg_len + 1);
@@ -192,15 +199,17 @@ static inline Message unpack_message(int fd) {
     while (total < (ssize_t)msg_len) {
         n = recv(fd, *msg_data + total, msg_len - (size_t)total, 0);
         if (n == 0) {
-            free(msg_data);
+            free(*msg_data);
             return (Message) { .type = DISCONNECT };
         } else if (n < 0) {
-            free(msg_data);
+            free(*msg_data);
             return (Message) { .type = INVALID };
         }
         total += n;
     }
     (*msg_data)[msg_len] = '\0';
+
+    printf("[DEBUG] message %s received", *msg_data);
 
     return result;
 }
