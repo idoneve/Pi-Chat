@@ -1,5 +1,5 @@
 # C Version
-CSTD ?= c11
+CSTD ?= c23
 
 # File names
 MAKENAME ?= Makefile
