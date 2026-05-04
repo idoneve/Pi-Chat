@@ -109,13 +109,13 @@ static int start_cli(int socket_fd) {
 
         switch (m.type) {
         case INVALID:
-            printf("[ERROR] Invalid message received from server");
+            perror("[ERROR] Invalid message received from server");
             continue;
         case ACTIVITY:
             continue;
         case MESSAGE:
             if (m.type_data.message.type == SEND) {
-                printf("[ERROR] SEND message type received from server. Ignoring");
+                perror("[ERROR] SEND message type received from server. Ignoring");
                 free(m.type_data.message.content.data);
                 continue;
             }
