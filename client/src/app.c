@@ -96,7 +96,7 @@ void update_app_state(AppState* state) {
     Clay_UpdateScrollContainers(true, state->mouse.scroll, state->deltaTime);
 }
 
-Clay_RenderCommandArray get_layout(const AppResources* resources, AppModel* model) {
+Clay_RenderCommandArray get_layout(const AppResources*, AppModel* model) {
     Clay_BeginLayout();
 
     CLAY({ .id = CLAY_ID("OuterContainer"),
@@ -125,19 +125,19 @@ void HandleClayErrors(Clay_ErrorData errorData) {
     }
 }
 
-size_t listen_for_messages(int socket_fd, Message* buf, size_t buf_len) {
+static size_t listen_for_messages(int socket_fd, Message* buf, size_t buf_len) {
     // TODO - Poll server for incoming events - do not block if no events ready
     // TODO - Parse message header for connection information.
     //   if message is activity request return activity message
     return 0;
 }
 
-Connection* map_message_to_connection(AppModel* model, ClientMessage* message) {
-    Connection* match = NULL;
+static ClientConnection* map_message_to_connection(AppModel* model, ClientMessage* message) {
+    ClientConnection* match = NULL;
 
-    // we can access type data because we know the data is a RECEIVE message
-    char* message_source = message->type_data.receive_source;
-    size_t source_len = sizeof(message->type_data.receive_source);
+    // we know the data is a RECEIVE message
+    char* message_source = message->ip;
+    size_t source_len = sizeof(message->ip);
     for (size_t i = 0; i < model->connections.len; i++) {
 
         if (strncmp(model->connections.data[i].dest, message_source, source_len) == 0) {
@@ -148,19 +148,19 @@ Connection* map_message_to_connection(AppModel* model, ClientMessage* message) {
     if (match == NULL) {
         if (model->connections.len == model->connections.cap) {
             // reallocate connection buffer and copy data
-            Connection* old_data = model->connections.data;
+            ClientConnection* old_data = model->connections.data;
 
             model->connections.cap = model->connections.len * 2;
-            model->connections.data = malloc(sizeof(Connection) * model->connections.cap);
+            model->connections.data = malloc(sizeof(ClientConnection) * model->connections.cap);
 
             memcpy(model->connections.data, old_data, model->connections.len);
             free(old_data);
         }
 
-        Connection* end = &model->connections.data[model->connections.len];
+        ClientConnection* end = &model->connections.data[model->connections.len];
 
         // add new connection
-        *end = (Connection) { 
+        *end = (ClientConnection) { 
             .messages = {
                 .data = malloc(sizeof(ClientMessage) * 5),
                 .len = 0,
@@ -179,7 +179,7 @@ Connection* map_message_to_connection(AppModel* model, ClientMessage* message) {
     return match;
 }
 
-void add_message_to_connection(Connection* connection, ClientMessage* message) {
+static void add_message_to_connection(ClientConnection* connection, ClientMessage* message) {
     if (connection->messages.len == connection->messages.cap) {
         // Resize message buffer
         ClientMessage* old_data = connection->messages.data;
@@ -195,7 +195,7 @@ void add_message_to_connection(Connection* connection, ClientMessage* message) {
     connection->messages.len++;
 }
 
-void update_connections(int socket_fd, AppModel* model) {
+static void update_connections(int socket_fd, AppModel* model) {
     Message incoming[5];
     size_t recieved;
     while ((recieved = listen_for_messages(socket_fd, incoming, 5)) != 0) {
@@ -210,8 +210,14 @@ void update_connections(int socket_fd, AppModel* model) {
                 break;
             case MESSAGE:
                 client_message = &message.type_data.message;
-                Connection* connection = map_message_to_connection(model, client_message);
+                ClientConnection* connection = map_message_to_connection(model, client_message);
                 add_message_to_connection(connection, client_message);
+                break;
+            case INVALID:
+                printf("[ERROR] Client receieved invalid message from server");
+                continue;
+            case DISCONNECT:
+                printf("[CLIENT] Server disconnect message receieved");
                 break;
             }
         }
@@ -239,7 +245,7 @@ void update_app_model(int socket_fd, AppModel* model) {
     TabModel* tabs = model->tabs.data;
     for (size_t i = 0; i < model->tabs.len; i++) {
         TabModel* tab = &tabs[i];
-        const Connection* connection = &model->connections.data[i];
+        const ClientConnection* connection = &model->connections.data[i];
 
         tab->index = i;
         tab->is_active = connection->is_active;
@@ -251,7 +257,7 @@ void update_app_model(int socket_fd, AppModel* model) {
 AppModel init_app_model(void) {
     return (AppModel) { 
             .connections = {
-                .data = malloc(sizeof(Connection)),
+                .data = malloc(sizeof(ClientConnection)),
                 .len = 0,
                 .cap = 1,
             },
@@ -261,7 +267,7 @@ AppModel init_app_model(void) {
 
 void deinit_app_model(AppModel* model) {
     for (size_t i = 0; i < model->connections.len; i++) {
-        Connection* connection = &model->connections.data[i];
+        ClientConnection* connection = &model->connections.data[i];
         for (size_t j = 0; j < connection->messages.len; j++) {
             ClientMessage* message = &connection->messages.data[j];
             free(message->content.data);
