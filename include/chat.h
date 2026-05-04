@@ -131,4 +131,22 @@ static inline ssize_t send_message(int fd, const char* msg) {
     return sent - HEADER_SIZE; // Payload bytes sent
 }
 
+
+static int create_socket(void) {
+    printf("\t[Server] Creating socket...\n");
+    int server_fd = socket(AF_INET, SOCK_STREAM, 0);
+    if (server_fd < 0) {
+        perror("[ERROR] Failed to create socket\n");
+        exit(1);
+    }
+    printf("\t[Server] Socket created\n");
+    return server_fd;
+}
+
+static struct sockaddr_in configure_socket(char* ip_addr) {
+    struct sockaddr_in addr;
+    addr.sin_family = AF_INET; // Use ipv4
+    addr.sin_port = htons(PORT); // Get port
+    return addr;
+}
 #endif

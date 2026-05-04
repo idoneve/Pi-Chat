@@ -1,52 +1,59 @@
 #include "client.h"
+#include <netinet/in.h>
+#include <stddef.h>
 #include <stdio.h>
+#include <sys/select.h>
+#include <sys/socket.h>
 #include <ui.h>
+#include <chat.h>
 
 volatile sig_atomic_t running = 1;
 
-int connect_to_server(char* ip_addr) {
-    // Create socket
-    printf("\t[Client] Creating socket...\n");
-    int socket_fd = socket(AF_INET, SOCK_STREAM, 0);
-    if (socket_fd < 0) {
-        perror("[ERROR] Failed to create socket\n");
-        exit(1);
-    }
-    printf("\t[Client] Socket created\n");
-
-    // Configure socket
-    printf("\t[Client] Configuring socket...\n");
-    struct sockaddr_in addr;
-    addr.sin_family = AF_INET; // Use ipv4
-    addr.sin_port = htons(PORT); // Get port
-    inet_pton(AF_INET, ip_addr, &addr.sin_addr);
-    printf("\t[Client] Socket configured\n");
-
-    // Connect to socket
+static void connect_to_socket(int socket_fd, const struct sockaddr_in* addr, socklen_t addr_size) {
     printf("\t[Client] Connecting to socket...\n");
-    if (connect(socket_fd, (struct sockaddr*)&addr, sizeof(addr)) < 0) {
+    if (connect(socket_fd, (struct sockaddr*)&addr, addr_size) < 0) {
         perror("[Error] Failed to connect to server");
         exit(1);
     }
     printf("\t[Client] Connected to socket\n");
+}
+
+int connect_to_server(char* ip_addr) {
+    int socket_fd = create_socket();
+
+    printf("\t[Client] Configuring socket...\n");
+    struct sockaddr_in addr = configure_socket();
+    inet_pton(AF_INET, ip_addr, &addr.sin_addr);
+    printf("\t[Client] Socket configured\n");
+
+    connect_to_socket(socket_fd, &addr, sizeof(addr));
 
     return socket_fd;
+}
+
+static int reload_fds(int socket_fd, fd_set* read_fds) {
+    FD_ZERO(read_fds);
+    FD_SET(STDIN_FILENO, read_fds); // Watch STDIN
+    FD_SET(socket_fd, read_fds); // Watch socket
+                                 //
+    int max_fd = (STDIN_FILENO > socket_fd) ? STDIN_FILENO : socket_fd;
+    printf("[Client] Waiting for input...\n");
+    return max_fd;
 }
 
 static int start_cli(int socket_fd) {
     // Main loop
     fd_set read_fds;
     while (running) {
-        FD_ZERO(&read_fds);
-        FD_SET(STDIN_FILENO, &read_fds); // Watch STDIN
-        FD_SET(socket_fd, &read_fds); // Watch socket
+        int max_fd = reload_fds(socket_fd, &read_fds);
+        is_signal_ready(max_fd, &read_fds);
 
-        int max_fd = (STDIN_FILENO > socket_fd) ? STDIN_FILENO : socket_fd;
-        printf("[Client] Waiting for input...\n");
-        if (select(max_fd + 1, &read_fds, NULL, NULL, NULL) < 0) {
-            if (errno == EINTR) {
-                continue; // ctrl+C was pressed
-            } else {
+        SignalResponse signal_respnse;
+        if ((signal_respnse = is_signal_ready(max_fd, &read_fds)) != SIGNAL) {
+            if (signal_respnse == INTERUPT) {
+                continue;
+            }
+            if (signal_respnse == FD_ERROR) {
                 perror("[ERROR] Failed to select fd with data\n");
                 break;
             }
