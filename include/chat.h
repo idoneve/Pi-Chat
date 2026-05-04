@@ -91,6 +91,8 @@ static void add_connection(Connections* connections, Connection connection) {
 
         connections->cap *= 2;
         connections->data = malloc(sizeof(Connection) * connections->cap);
+        memcpy(connections->data, old_data, connections->len);
+        free(old_data);
     }
 
     connections->data[connections->len++] = connection;
