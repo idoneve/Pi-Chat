@@ -2,7 +2,7 @@
 #include "raylib.h"
 #include "style.h"
 #include "ui_models.h"
-#include <../../chat.h>
+#include <chat.h>
 #include <arpa/inet.h>
 #include <components.h>
 #include <netinet/in.h>

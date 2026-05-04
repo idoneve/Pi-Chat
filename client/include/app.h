@@ -3,7 +3,7 @@
 // #ifndef CLAY_IMPLEMENTATION
 // #error "This file include may not come before clay implementation defined"
 // #endif // !CLAY_IMPLEMENTATION
-#include "../../chat.h"
+#include "chat.h"
 #include "clay.h"
 #include "raylib.h"
 #include <stddef.h>
