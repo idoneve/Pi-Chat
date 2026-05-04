@@ -65,8 +65,8 @@ static int accept_client(int server_fd) {
     }
 }
 
-static int load_connections(int server_fd, Connection* connections, size_t active_connections,
-    fd_set* read_fds, fd_set* write_fds) {
+static int load_connections(
+    int server_fd, Connections* connections, fd_set* read_fds, fd_set* write_fds) {
 
     FD_ZERO(write_fds);
     FD_ZERO(read_fds);
@@ -74,11 +74,11 @@ static int load_connections(int server_fd, Connection* connections, size_t activ
     FD_SET(server_fd, write_fds);
     FD_SET(server_fd, read_fds); // Load server into reader
     int max_fd = server_fd;
-    for (size_t i = 0; i < active_connections; ++i) {
-        FD_SET(connections[i].fd, write_fds);
-        FD_SET(connections[i].fd, read_fds); // Load clients into reader
-        if (connections[i].fd > max_fd) {
-            max_fd = connections[i].fd;
+    for (size_t i = 0; i < connections->len; ++i) {
+        FD_SET(connections->data[i].fd, write_fds);
+        FD_SET(connections->data[i].fd, read_fds); // Load clients into reader
+        if (connections->data[i].fd > max_fd) {
+            max_fd = connections->data[i].fd;
         }
     }
     return max_fd;
@@ -103,92 +103,99 @@ static int get_readable_ip(int fd, char* buf, size_t buf_len) {
 typedef enum {
     FULL_ERROR = -1,
     ACCEPT_ERROR = -2,
+    NONE = 0,
 } AcceptError;
 
 // Returns size of active conenctions or an AcceptError
-static ssize_t accept_clients(
-    int server_fd, Connection* connections, size_t active_connections, fd_set* read_fds) {
+static AcceptError accept_clients(int server_fd, Connections* connections, fd_set* read_fds) {
 
     if (!FD_ISSET(server_fd, read_fds))
-        return (ssize_t)active_connections;
+        return NONE;
 
     int client_fd = accept_client(server_fd);
     if (client_fd < 0) {
         return ACCEPT_ERROR;
-    } else if (active_connections >= MAX_CONNECTIONS) {
+    } else if (connections->len >= MAX_CONNECTIONS) {
         close(client_fd);
         return FULL_ERROR;
     } else {
-        char ip[INET_ADDRSTRLEN];
-        get_readable_ip(client_fd, ip, sizeof(ip));
 
-        connections[active_connections] = (Connection) {
+        Connection c = (Connection) {
             .fd = client_fd,
             .active = true,
         };
-        memcpy(connections[active_connections].ip, ip, INET_ADDRSTRLEN);
 
-        active_connections += 1;
-        printf("\t[Server] Client connection accepted (fd %d: ip %s)\n", client_fd, ip);
-        return (ssize_t)active_connections;
+        if (get_readable_ip(client_fd, c.ip, sizeof(c.ip)) < 0) {
+            printf("[FATAL] client ip could not be determined");
+            exit(0);
+        }
+
+        add_connection(connections, c);
+
+        printf("\t[Server] Client connection accepted (fd %d: ip %s)\n", client_fd, c.ip);
+        return NONE;
     }
 }
 
-static int route_message(size_t current_connection, Connection* connections, size_t connections_len,
-    const ClientMessage* message) {
+static int route_message(
+    size_t current_connection, const Connections* connections, const ClientMessage* message) {
+
+    if (message->type != SEND) {
+        printf("[ERROR] Receive message given to router");
+        return -1;
+    }
 
     // TODO ROUTE MESSAGES
-    int destination_fd = -1;
-    for (size_t i = 0; i < connections_len; i++) {
-        if (strncmp(message->ip, connections[i].ip, INET_ADDRSTRLEN) == 0) {
-            destination_fd = connections[i].fd;
+    ssize_t destination = -1;
+    for (size_t i = 0; i < connections->len; i++) {
+        if (strncmp(message->ip, connections->data[i].ip, INET_ADDRSTRLEN) == 0) {
+            destination = (ssize_t)i;
+            break;
         }
     }
 
-    if (destination_fd < 0) {
+    if (destination < 0) {
         printf("[ERROR] Unkown destination address provided");
-        return destination_fd;
+        return (int)destination;
     }
 
     // Broadcast message to everyone else
-    for (size_t j = 0; j < connections_len; ++j) {
-        if (current_connection != j) {
-            if (send(connections[j].fd, message->content.data, message->content.len, 0) < 0) {
-                perror("[ERROR] Could not broadcast message\n");
-                // TODO send inactive response to client
-                continue;
-            }
-            printf("\t[Server] Broadcasted message from fd %d to fd %d\n",
-                connections[current_connection], connections[j]);
-        }
+    if (send(connections->data[destination].fd, message->content.data, message->content.len, 0)
+        < 0) {
+        perror("[ERROR] Could not broadcast message\n");
     }
+
+    printf("\t[Server] Broadcasted message from fd %d to fd %d\n",
+        connections->data[current_connection].fd, connections->data[destination].fd);
 
     return 0;
 }
 
-static void check_for_messages(
-    Connection* connections, size_t active_connections, fd_set* read_fds) {
-    for (size_t i = 0; i < active_connections; ++i) {
+static void check_for_messages(Connections* connections, fd_set* read_fds) {
+    for (size_t i = 0; i < connections->len; ++i) {
+        if (!connections->data[i].active)
+            continue;
 
-        if (!FD_ISSET(connections[i].fd, read_fds))
+        if (!FD_ISSET(connections->data[i].fd, read_fds))
             // Connection has no new messages
             continue;
 
-        printf("\t[Server] Client (fd %d) is sending a signal...\n", connections[i].fd);
+        printf("\t[Server] Client (fd %d) is sending a signal...\n", connections->data[i].fd);
 
         char buf[HEADER_SIZE + MAX_MSG_LEN];
 
-        Message message = unpack_message(connections[i].fd);
+        Message message = unpack_message(connections->data[i].fd);
         switch (message.type) {
         case INVALID:
             printf("Error: Malinformed Message Received");
             return;
         case ACTIVITY:
             // MARK CONNECTION AS ACTIVE
+            connections->data[i].active = true;
             return;
         case DISCONNECT:
-            printf("\t[Server] Client (fd %d) has disconnected\n", connections[i].fd);
-            connections[i] = connections[--active_connections];
+            printf("\t[Server] Client (fd %d) has disconnected\n", connections->data[i].fd);
+            connections->data[i].active = false;
             return;
         case MESSAGE:
             break;
@@ -200,15 +207,14 @@ static void check_for_messages(
             return;
         }
 
-        route_message(i, connections, active_connections, client_message);
+        route_message(i, connections, client_message);
         printf("\t[Server] The message of size %zd has been broadcasted\n",
             client_message->content.len);
     }
 }
 
 int main(void) {
-    size_t active_connections = 0;
-    Connection connections[MAX_CONNECTIONS];
+    Connections connections = init_connections();
 
     printf("[Server] Starting up server...\n");
     setup_signal_handler();
@@ -220,8 +226,7 @@ int main(void) {
     fd_set write_fds;
     while (running) {
         // Create fd reader
-        int max_fd
-            = load_connections(server_fd, connections, active_connections, &read_fds, &write_fds);
+        int max_fd = load_connections(server_fd, &connections, &read_fds, &write_fds);
 
         // Only proceed if a watched fd is ready to read (no blocks)
         printf("[Server] Waiting for signal...\n");
@@ -238,9 +243,7 @@ int main(void) {
         printf("\t[Server] A signal is being processed...\n");
 
         ssize_t accept_response;
-        if ((accept_response
-                = accept_clients(server_fd, connections, active_connections, &read_fds))
-            < 0) {
+        if ((accept_response = accept_clients(server_fd, &connections, &read_fds)) < 0) {
             switch (accept_response) {
             case ACCEPT_ERROR:
                 perror("[ERROR] Could not accept client\n");
@@ -253,9 +256,8 @@ int main(void) {
                 break;
             }
         }
-        active_connections = (size_t)accept_response;
 
-        check_for_messages(connections, active_connections, &read_fds);
+        check_for_messages(&connections, &read_fds);
     }
 
     return close_server(server_fd);
