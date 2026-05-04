@@ -63,7 +63,10 @@ static int start_cli(int socket_fd) {
         // Signal from STDIN
         if (FD_ISSET(STDIN_FILENO, &read_fds)) {
             char addr[INET_ADDRSTRLEN];
+
             printf("[CLIENT] Enter Destination Address: ");
+            fflush(stdout);
+
             if (fgets(addr, sizeof(addr), stdin) == NULL) { // Get input
                 perror("[ERROR] Something went wrong reading input\n");
                 break;
@@ -71,6 +74,7 @@ static int start_cli(int socket_fd) {
 
             char input[MAX_MSG_LEN];
             printf("[CLIENT] Enter Message: ");
+            fflush(stdout);
             if (fgets(input, sizeof(input), stdin) == NULL) { // Get input
                 perror("[ERROR] Something went wrong reading input\n");
                 break;
