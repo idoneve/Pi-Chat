@@ -51,12 +51,12 @@ typedef struct {
     // Readable name of ip destination
     char dest[INET_ADDRSTRLEN];
     bool is_active;
-} Connection;
+} ClientConnection;
 
 // Contains things necessary to create ui
 typedef struct {
     struct {
-        Connection* data;
+        ClientConnection* data;
         size_t len;
         size_t cap;
         size_t selected;
