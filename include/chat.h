@@ -172,7 +172,7 @@ static inline Message unpack_message(int fd) {
 // Send a length-prefixed message
 static inline ssize_t send_message(int fd, const ClientMessage* message) {
     if (message->type != SEND){
-        printf("[ERROR] Invalid message type was queued for send");
+        perror("[ERROR] Invalid message type was queued for send");
         return -1;
     }
 
