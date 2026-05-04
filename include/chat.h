@@ -70,7 +70,7 @@ typedef struct {
     size_t cap;
 } Connections;
 
-static Connections init_connections() {
+static Connections init_connections(void) {
     return (Connections) {
         .data = malloc(sizeof(Connection) * MAX_CONNECTIONS),
         .len = 0,
@@ -231,7 +231,7 @@ static int create_socket(void) {
     return server_fd;
 }
 
-static struct sockaddr_in configure_socket() {
+static struct sockaddr_in configure_socket(void) {
     struct sockaddr_in addr;
     addr.sin_family = AF_INET; // Use ipv4
     addr.sin_port = htons(PORT); // Get port
