@@ -130,6 +130,7 @@ size_t listen_for_messages(int socket_fd, Message* buf, size_t buf_len) {
     // TODO - Poll server for incoming events - do not block if no events ready
     // TODO - Parse message header for connection information.
     //   if message is activity request return activity message
+    return 0;
 }
 
 Connection* map_message_to_connection(AppModel* model, ClientMessage* message) {
@@ -156,11 +157,13 @@ Connection* map_message_to_connection(AppModel* model, ClientMessage* message) {
         Connection* end = &model->connections.data[model->connections.len];
 
         // add new connection
-        *end = (Connection) { .messages = {
-                                  .data = malloc(sizeof(ClientMessage) * 5),
-                                  .len = 0,
-                                  .cap = 5,
-                              } };
+        *end = (Connection) { 
+            .messages = {
+                .data = malloc(sizeof(ClientMessage) * 5),
+                .len = 0,
+                .cap = 5,
+            }, 
+            .is_active = true, .user_input = {.len = 0, .cursor = 0}};
 
         // copy source char[16] into connection dest char[16]
         memcpy(end->dest, message->source, sizeof(message->source));
