@@ -134,9 +134,13 @@ size_t listen_for_messages(int socket_fd, Message* buf, size_t buf_len) {
 
 Connection* map_message_to_connection(AppModel* model, ClientMessage* message) {
     Connection* match = NULL;
+
+    // we can access type data because we know the data is a RECEIVE message
+    char* message_source = message->type_data.receive_source;
+    size_t source_len = sizeof(message->type_data.receive_source);
     for (size_t i = 0; i < model->connections.len; i++) {
 
-        if (strcmp(model->connections.data[i].dest, message->source) == 0) {
+        if (strncmp(model->connections.data[i].dest, message_source, source_len) == 0) {
             match = &model->connections.data[i];
         }
     }
@@ -165,7 +169,7 @@ Connection* map_message_to_connection(AppModel* model, ClientMessage* message) {
             .is_active = true, .user_input = {.len = 0, .cursor = 0}};
 
         // copy source char[16] into connection dest char[16]
-        memcpy(end->dest, message->source, sizeof(message->source));
+        memcpy(end->dest, message_source, source_len);
 
         model->connections.len += 1;
 
@@ -205,7 +209,7 @@ void update_connections(int socket_fd, AppModel* model) {
                 // Send response to server
                 break;
             case MESSAGE:
-                client_message = &message.data.message;
+                client_message = &message.type_data.message;
                 Connection* connection = map_message_to_connection(model, client_message);
                 add_message_to_connection(connection, client_message);
                 break;

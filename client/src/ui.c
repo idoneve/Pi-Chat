@@ -37,7 +37,7 @@ int start_ui_app(int socket_fd) {
         }
 
         update_app_state(&state);
-        update_app_model(socket_fd,&model);
+        update_app_model(socket_fd, &model);
         Clay_RenderCommandArray render_commands = get_layout(&resources, &model);
         draw_app(render_commands, &resources);
     }
