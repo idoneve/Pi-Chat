@@ -90,12 +90,6 @@ static int load_connections(int server_fd, Connection* connections, size_t activ
     return max_fd;
 }
 
-typedef enum {
-    FULL_ERROR = -1,
-    ACCEPT_ERROR = -2,
-    FD_UNSET_ERROR = -3,
-} AcceptError;
-
 // Returns a char* to memory with len INET_ADDRSTRLEN or NULL
 static int get_readable_ip(int fd, char* buf, size_t buf_len) {
     if (buf_len != INET_ADDRSTRLEN) {
@@ -112,11 +106,17 @@ static int get_readable_ip(int fd, char* buf, size_t buf_len) {
     return 0;
 }
 
+typedef enum {
+    FULL_ERROR = -1,
+    ACCEPT_ERROR = -2,
+} AcceptError;
+
+// Returns size of active conenctions or an AcceptError
 static ssize_t accept_clients(
     int server_fd, Connection* connections, size_t active_connections, fd_set* read_fds) {
 
     if (!FD_ISSET(server_fd, read_fds))
-        return FD_UNSET_ERROR;
+        return (ssize_t)active_connections;
 
     int client_fd = accept_client(server_fd);
     if (client_fd < 0) {
@@ -175,7 +175,7 @@ static void check_for_messages(
     Connection* connections, size_t active_connections, fd_set* read_fds) {
     for (size_t i = 0; i < active_connections; ++i) {
 
-        if (FD_ISSET(connections[i].fd, read_fds))
+        if (!FD_ISSET(connections[i].fd, read_fds))
             continue;
 
         printf("\t[Server] Client (fd %d) is sending a signal...\n", connections[i]);
