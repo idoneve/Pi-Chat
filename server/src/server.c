@@ -66,16 +66,13 @@ static int accept_client(int server_fd) {
 }
 
 static int load_connections(
-    int server_fd, Connections* connections, fd_set* read_fds, fd_set* write_fds) {
+    int server_fd, Connections* connections, fd_set* read_fds) {
 
-    FD_ZERO(write_fds);
     FD_ZERO(read_fds);
 
-    FD_SET(server_fd, write_fds);
     FD_SET(server_fd, read_fds); // Load server into reader
     int max_fd = server_fd;
     for (size_t i = 0; i < connections->len; ++i) {
-        FD_SET(connections->data[i].fd, write_fds);
         FD_SET(connections->data[i].fd, read_fds); // Load clients into reader
         if (connections->data[i].fd > max_fd) {
             max_fd = connections->data[i].fd;
@@ -223,10 +220,9 @@ int main(void) {
 
     // Main loop
     fd_set read_fds;
-    fd_set write_fds;
     while (running) {
         // Create fd reader
-        int max_fd = load_connections(server_fd, &connections, &read_fds, &write_fds);
+        int max_fd = load_connections(server_fd, &connections, &read_fds );
 
         // Only proceed if a watched fd is ready to read (no blocks)
         printf("[Server] Waiting for signal...\n");
