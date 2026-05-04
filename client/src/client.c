@@ -1,4 +1,5 @@
 #include "client.h"
+#include "app.h"
 #include <complex.h>
 #include <netinet/in.h>
 #include <stddef.h>
@@ -64,20 +65,21 @@ static int start_cli(int socket_fd) {
             }
         }
 
-
         // Signal from STDIN
         if (FD_ISSET(STDIN_FILENO, &read_fds)) {
-            char addr[INET_ADDRSTRLEN];
+            ClientMessage message = {
+                .type = SEND,
+            };
 
-            if (fgets(addr, sizeof(addr), stdin) == NULL) { // Get input
+            if (fgets(message.ip, sizeof(message.ip), stdin) == NULL) { // Get input
                 perror("[ERROR] Something went wrong reading input\n");
                 break;
             }
-            addr[strcspn(addr, "\n")] = '\0'; // Add terminator
-            printf("[CLIENT] Input received address %s\n", addr);
+            message.ip[strcspn(message.ip, "\n")] = '\0'; // Add terminator
+            printf("[CLIENT] Input received address %s\n", message.ip);
 
             struct in_addr dummy;
-            if (inet_pton(AF_INET, addr, &dummy) != 1){
+            if (inet_pton(AF_INET, message.ip, &dummy) != 1) {
                 printf("[ERROR] Input was not a valid address\n");
                 continue; // not a valid IPv4 address
             }
@@ -91,22 +93,15 @@ static int start_cli(int socket_fd) {
             }
             input[strcspn(input, "\n")] = '\0'; // Add terminator
                                                 //
-            printf("[CLIENT] Input received messsage %s\n", addr);
+            printf("[CLIENT] Input received messsage %s\n", message.ip);
 
             if (strlen(input) == 0)
                 continue; // ignore empty reads, go back to select
 
-            ClientMessage c = {
-                .content = {
-                    .data = input,
-                    .len = strnlen(input, MAX_MSG_LEN),
-                },
-                .type = SEND,
-            };
+            message.content.data = input;
+            message.content.len = strnlen(input, MAX_MSG_LEN);
 
-            memcpy(c.ip, addr, HEADER_ADDR_SIZE);
-
-            if (send_message(socket_fd, &c) < 0) { // Send to server
+            if (send_message(socket_fd, &message) < 0) { // Send to server
                 printf("[Client] Failed to send, server may be down\n");
                 break;
             }
