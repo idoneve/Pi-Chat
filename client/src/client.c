@@ -9,9 +9,9 @@
 
 volatile sig_atomic_t running = 1;
 
-static void connect_to_socket(int socket_fd, const struct sockaddr_in* addr, socklen_t addr_size) {
+static void connect_to_socket(int socket_fd, struct sockaddr_in* addr, socklen_t addr_size) {
     printf("\t[Client] Connecting to socket...\n");
-    if (connect(socket_fd, (struct sockaddr*)&addr, addr_size) < 0) {
+    if (connect(socket_fd, (struct sockaddr*)addr, addr_size) < 0) {
         perror("[Error] Failed to connect to server");
         exit(1);
     }

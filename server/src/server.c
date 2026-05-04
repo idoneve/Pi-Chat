@@ -7,7 +7,6 @@
 
 volatile sig_atomic_t running = 1;
 
-
 static void bind_socket(int server_fd) {
     printf("\t[Server] Binding socket...\n");
     struct sockaddr_in addr = configure_socket();
@@ -31,7 +30,9 @@ static void start_listening(int server_fd) {
 }
 
 static int start_server(void) {
+    printf("\t[Server] Creating socket...\n");
     int server_fd = create_socket();
+    printf("\t[Server] Socket created\n");
 
     bind_socket(server_fd);
     start_listening(server_fd);
@@ -148,7 +149,6 @@ static void check_for_messages(int* connections, int active_connections, fd_set*
     }
 }
 
-
 int main(void) {
     int active_connections = 0;
     int connections[MAX_CONNECTIONS];
@@ -167,6 +167,7 @@ int main(void) {
             = load_connections(server_fd, connections, active_connections, &read_fds, &write_fds);
 
         // Only proceed if a watched fd is ready to read (no blocks)
+        printf("[Server] Waiting for signal...\n");
         SignalResponse signal_respnse;
         if ((signal_respnse = is_signal_ready(max_fd, &read_fds)) != SIGNAL) {
             if (signal_respnse == INTERUPT) {
@@ -177,6 +178,7 @@ int main(void) {
                 break;
             }
         }
+        printf("\t[Server] A signal is being processed...\n");
 
         int accept_response;
         if ((accept_response

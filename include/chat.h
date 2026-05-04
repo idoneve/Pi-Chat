@@ -132,13 +132,11 @@ static inline ssize_t send_message(int fd, const char* msg) {
 }
 
 static int create_socket(void) {
-    printf("\t[Server] Creating socket...\n");
     int server_fd = socket(AF_INET, SOCK_STREAM, 0);
     if (server_fd < 0) {
         perror("[ERROR] Failed to create socket\n");
         exit(1);
     }
-    printf("\t[Server] Socket created\n");
     return server_fd;
 }
 
@@ -156,7 +154,6 @@ typedef enum {
 } SignalResponse;
 
 static SignalResponse is_signal_ready(int max_fd, fd_set* read_fds) {
-    printf("[Server] Waiting for signal...\n");
     if (select(max_fd + 1, read_fds, NULL, NULL, NULL) < 0) {
         if (errno == EINTR) {
             return INTERUPT; // ctrl+C was pressed
@@ -164,7 +161,6 @@ static SignalResponse is_signal_ready(int max_fd, fd_set* read_fds) {
             return FD_ERROR;
         }
     }
-    printf("\t[Server] A signal is being processed...\n");
     return SIGNAL;
 }
 
