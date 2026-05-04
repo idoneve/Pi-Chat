@@ -27,7 +27,6 @@ typedef struct {
 
 // Contains any external data needed for the app (Fonts, Images, Etc)
 typedef struct {
-    Texture2D profilePicture;
     struct {
         Font* data;
         size_t len;
@@ -78,7 +77,7 @@ AppState initialize_app(Font* fonts);
 
 void reinitialize_app(AppState* state);
 
-void uninitialize_app(void); 
+void uninitialize_app(void);
 
 AppResources load_resources(Font* fonts, size_t font_count);
 void unload_resources(AppResources* resources);
@@ -88,4 +87,5 @@ void draw_app(Clay_RenderCommandArray render_commands, const AppResources* resou
 void HandleClayErrors(Clay_ErrorData);
 
 AppModel init_app_model(void);
+
 void deinit_app_model(AppModel*);
