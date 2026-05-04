@@ -42,10 +42,8 @@ typedef struct {
 
     enum { RECEIVE, SEND } type;
 
-    struct {
-        char receive_source[INET_ADDRSTRLEN];
-        char send_dest[INET_ADDRSTRLEN];
-    } type_data;
+    //Holds destination when type is send, holds source when type is receive
+    char ip[INET_ADDRSTRLEN];
 
     // Readable Ip Source
 } ClientMessage;
@@ -78,19 +76,19 @@ static inline void setup_signal_handler(void) {
 
 // Pack a message with length prefix, returns total bytes to send
 static inline ssize_t pack_message(
-    const ClientMessage* send_message, char* out_buf, size_t buf_size) {
-    if (send_message->content.len + HEADER_SIZE > buf_size)
+    const ClientMessage* message, char* out_buf, size_t buf_size) {
+    if (message->content.len + HEADER_SIZE > buf_size)
         return -1; // msg too big
 
     char type[HEADER_TYPE_SIZE] = { SEND };
     memcpy(out_buf, type, HEADER_TYPE_SIZE);
-    memcpy(out_buf + HEADER_TYPE_SIZE, send_message->type_data.send_dest, HEADER_ADDR_SIZE);
+    memcpy(out_buf + HEADER_TYPE_SIZE, message->ip, HEADER_ADDR_SIZE);
 
-    uint32_t net_len = htonl((unsigned int)send_message->content.len);
+    uint32_t net_len = htonl((unsigned int)message->content.len);
     memcpy(out_buf + HEADER_SIZE - HEADER_LEN_SIZE, &net_len, HEADER_LEN_SIZE);
-    memcpy(out_buf + HEADER_SIZE, send_message->content.data, send_message->content.len);
+    memcpy(out_buf + HEADER_SIZE, message->content.data, message->content.len);
 
-    return (ssize_t)(send_message->content.len + HEADER_SIZE);
+    return (ssize_t)(message->content.len + HEADER_SIZE);
 }
 
 static inline Message unpack_message(int fd) {
@@ -129,7 +127,7 @@ static inline Message unpack_message(int fd) {
 
     // Copy address into receive ClientMessage
     result.type_data.message = (ClientMessage) { .type = RECEIVE };
-    memcpy(result.type_data.message.type_data.receive_source, dest_buf, HEADER_ADDR_SIZE);
+    memcpy(result.type_data.message.ip, dest_buf, HEADER_ADDR_SIZE);
 
     // Read 4-byte length header
     n = recv(fd, &net_len, HEADER_LEN_SIZE, 0);
@@ -171,11 +169,6 @@ static inline Message unpack_message(int fd) {
 
 // Send a length-prefixed message
 static inline ssize_t send_message(int fd, const ClientMessage* message) {
-    if (message->type != SEND){
-        printf("[ERROR] Invalid message type was queued for send\n");
-        return -1;
-    }
-
     char packet[MAX_MSG_LEN + HEADER_SIZE];
     ssize_t total = pack_message(message, packet, sizeof(packet));
     if (total < 0)

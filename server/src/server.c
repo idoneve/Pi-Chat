@@ -146,7 +146,7 @@ static int route_message(size_t current_connection, Connection* connections, siz
     // TODO ROUTE MESSAGES
     int destination_fd = -1;
     for (size_t i = 0; i < connections_len; i++) {
-        if (strncmp(message->type_data.send_dest, connections[i].ip, INET_ADDRSTRLEN) == 0) {
+        if (strncmp(message->ip, connections[i].ip, INET_ADDRSTRLEN) == 0) {
             destination_fd = connections[i].fd;
         }
     }
