@@ -19,6 +19,7 @@ typedef struct {
 static void bind_socket(int server_fd) {
     printf("\t[Server] Binding socket...\n");
     struct sockaddr_in addr = configure_socket();
+    addr.sin_addr.s_addr = INADDR_ANY; // Listens on all network interfaces
 
     int opt = 1;
     setsockopt(server_fd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)); // Reuse address if needed
