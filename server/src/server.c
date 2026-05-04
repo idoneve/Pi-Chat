@@ -1,3 +1,4 @@
+#include <netinet/in.h>
 #include <stddef.h>
 #include <sys/select.h>
 #include <sys/socket.h>
@@ -6,24 +7,11 @@
 
 volatile sig_atomic_t running = 1;
 
-static int create_socket(void) {
-    printf("\t[Server] Creating socket...\n");
-    int server_fd = socket(AF_INET, SOCK_STREAM, 0);
-    if (server_fd < 0) {
-        perror("[ERROR] Failed to create socket\n");
-        exit(1);
-    }
-    printf("\t[Server] Socket created\n");
-    return server_fd;
-}
-
 static void bind_socket(int server_fd) {
     printf("\t[Server] Binding socket...\n");
+    struct sockaddr_in addr = configure_socket();
+
     int opt = 1;
-    struct sockaddr_in addr;
-    addr.sin_family = AF_INET; // Use IPv4
-    addr.sin_addr.s_addr = INADDR_ANY; // Listens on all network interfaces
-    addr.sin_port = htons(PORT); // Get port
     setsockopt(server_fd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)); // Reuse address if needed
     if (bind(server_fd, (struct sockaddr*)&addr, sizeof(addr)) < 0) {
         perror("[ERROR] Failed to bind socket\n");
@@ -42,7 +30,9 @@ static void start_listening(int server_fd) {
 }
 
 static int start_server(void) {
+    printf("\t[Server] Creating socket...\n");
     int server_fd = create_socket();
+    printf("\t[Server] Socket created\n");
 
     bind_socket(server_fd);
     start_listening(server_fd);
@@ -91,21 +81,16 @@ static int load_connections(
 }
 
 typedef enum {
-    FD_ERROR,
-    SIGNAL,
-    INTERUPT,
-} SignalResponse;
-
-typedef enum {
     FULL_ERROR = -1,
     ACCEPT_ERROR = -2,
+    FD_UNSET_ERROR = -3,
 } AcceptError;
 
 static int accept_clients(
     int server_fd, int* connections, int active_connections, fd_set* read_fds) {
 
     if (!FD_ISSET(server_fd, read_fds))
-        return 3;
+        return FD_UNSET_ERROR;
 
     int client_fd = accept_client(server_fd);
     if (client_fd < 0) {
@@ -164,19 +149,6 @@ static void check_for_messages(int* connections, int active_connections, fd_set*
     }
 }
 
-static SignalResponse is_signal_ready(int max_fd, fd_set* read_fds) {
-    printf("[Server] Waiting for signal...\n");
-    if (select(max_fd + 1, read_fds, NULL, NULL, NULL) < 0) {
-        if (errno == EINTR) {
-            return INTERUPT; // ctrl+C was pressed
-        } else {
-            return FD_ERROR;
-        }
-    }
-    printf("\t[Server] A signal is being processed...\n");
-    return SIGNAL;
-}
-
 int main(void) {
     int active_connections = 0;
     int connections[MAX_CONNECTIONS];
@@ -195,6 +167,7 @@ int main(void) {
             = load_connections(server_fd, connections, active_connections, &read_fds, &write_fds);
 
         // Only proceed if a watched fd is ready to read (no blocks)
+        printf("[Server] Waiting for signal...\n");
         SignalResponse signal_respnse;
         if ((signal_respnse = is_signal_ready(max_fd, &read_fds)) != SIGNAL) {
             if (signal_respnse == INTERUPT) {
@@ -205,6 +178,7 @@ int main(void) {
                 break;
             }
         }
+        printf("\t[Server] A signal is being processed...\n");
 
         int accept_response;
         if ((accept_response

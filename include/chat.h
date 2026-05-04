@@ -131,4 +131,37 @@ static inline ssize_t send_message(int fd, const char* msg) {
     return sent - HEADER_SIZE; // Payload bytes sent
 }
 
+static int create_socket(void) {
+    int server_fd = socket(AF_INET, SOCK_STREAM, 0);
+    if (server_fd < 0) {
+        perror("[ERROR] Failed to create socket\n");
+        exit(1);
+    }
+    return server_fd;
+}
+
+static struct sockaddr_in configure_socket() {
+    struct sockaddr_in addr;
+    addr.sin_family = AF_INET; // Use ipv4
+    addr.sin_port = htons(PORT); // Get port
+    return addr;
+}
+
+typedef enum {
+    FD_ERROR,
+    SIGNAL,
+    INTERUPT,
+} SignalResponse;
+
+static SignalResponse is_signal_ready(int max_fd, fd_set* read_fds) {
+    if (select(max_fd + 1, read_fds, NULL, NULL, NULL) < 0) {
+        if (errno == EINTR) {
+            return INTERUPT; // ctrl+C was pressed
+        } else {
+            return FD_ERROR;
+        }
+    }
+    return SIGNAL;
+}
+
 #endif
