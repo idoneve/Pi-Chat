@@ -18,20 +18,20 @@ static void chat_message(size_t index, const ClientMessage* message) {
                 .padding = CLAY_PADDING_ALL(PADDING_CHAT_MESSAGE_SURROUND),
                 .layoutDirection = CLAY_TOP_TO_BOTTOM,
                 .childAlignment
-                    = { .x = (message->source == NULL ? CLAY_ALIGN_X_RIGHT : CLAY_ALIGN_X_LEFT), },
+                    = { .x = (message->type == SEND ? CLAY_ALIGN_X_RIGHT : CLAY_ALIGN_X_LEFT), },
                 .sizing = { .width = CLAY_SIZING_GROW(), .height = CLAY_SIZING_FIT() },
                 .childGap = GAP_CHAT_MESSAGE_INNER 
         }}) {
 
         // Sender Name
-        char* sender_id = message->source == NULL ? "Me" : message->source;
+        char* sender_id = message->type == SEND ? "Me" : message->type_data.receive_source;
         CLAY_TEXT(((Clay_String) {
                       .chars = sender_id,
                       .length = strlen(sender_id),
-                      .isStaticallyAllocated = message->source == NULL,
+                      .isStaticallyAllocated = message->type == SEND,
                   }),
             CLAY_TEXT_CONFIG({ .textAlignment
-                = message->source == NULL ? CLAY_TEXT_ALIGN_RIGHT : CLAY_TEXT_ALIGN_LEFT,
+                = message->type == SEND ? CLAY_TEXT_ALIGN_RIGHT : CLAY_TEXT_ALIGN_LEFT,
                 .letterSpacing = SPACING_CHAT_FONT,
                 .textColor = COLOR_CHAT_TEXT,
                 .fontId = ID_CHAT_FONT,
