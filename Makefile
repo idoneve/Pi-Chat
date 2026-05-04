@@ -2,7 +2,7 @@
 SERVER_TARGET = bin/server
 CLIENT_TARGET = bin/client
 
-all: $(SERVER_TARGET) $(CLIENT_TARGET)
+all: clean $(SERVER_TARGET) $(CLIENT_TARGET)
 
 bin/server: | bin
 	make -C ./server/
