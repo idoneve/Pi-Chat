@@ -19,24 +19,7 @@ int start_ui_app(int socket_fd) {
     printf("[CLIENT] Loading Resources\n");
     AppResources resources = load_resources(fonts, 2);
 
-    // ---  DEBUG DATA ---
-    Message messages1[5] = {
-        (Message) { .source = NULL, .content = { "Test message", 12 } },
-        (Message) { .source = "192.168.0.255", .content = { .data = "Does this", .len = 9 } },
-        (Message) { .source = "192.168.0.255", .content = { "Work", 4 } },
-        (Message) { .source = NULL, .content = { "I think", 7 } },
-        (Message) { .source = NULL, .content = { "but who freakin knows", 21 } },
-    };
-
-    Connection connections[2] = {
-        (Connection) { .messages = {
-            .data = messages1,
-            .len = 5,
-        }, .dest = "192.168.0.255", .is_active = true },
-        (Connection) { .messages = {}, .dest = "192.168.0.250", .is_active = false },
-    };
-
-    AppModel model = { .connections = { .data = connections, .len = 2 }, .tabs = { } };
+    AppModel model = init_app_model();
 
     bool enable_debug_mode = false;
     // -------------------
@@ -54,12 +37,17 @@ int start_ui_app(int socket_fd) {
         }
 
         update_app_state(&state);
-        update_app_model(&model);
+        update_app_model(socket_fd,&model);
         Clay_RenderCommandArray render_commands = get_layout(&resources, &model);
         draw_app(render_commands, &resources);
     }
+    printf("[CLIENT] Ending Render Loop. Cleaning up UI data.\n");
 
     unload_resources(&resources);
+    deinit_app_model(&model);
+    uninitialize_app();
+
+    printf("[CLIENT] Finished cleaning UI data.\n");
 
     return 0;
 }
