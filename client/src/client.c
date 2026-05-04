@@ -78,14 +78,6 @@ static int start_cli(int socket_fd) {
         }
     }
 
-    // Disconnect the client
-    printf("[Client] Disconnecting from server...\n");
-    if (close(socket_fd) < 0) {
-        perror("[ERROR] Could not disconnect from server\n");
-        return 1;
-    }
-    printf("[Client] Disconnected\n");
-
     return 0;
 }
 
@@ -109,9 +101,20 @@ int main(int argc, char* argv[]) {
         }
     }
 
+    int exit;
     if (!use_cli) {
-        return start_ui_app(socket_fd);
+        exit = start_ui_app(socket_fd);
     } else {
-        return start_cli(socket_fd);
+        exit = start_cli(socket_fd);
     }
+
+    // Disconnect the client
+    printf("[Client] Disconnecting from server...\n");
+    if (close(socket_fd) < 0) {
+        perror("[ERROR] Could not disconnect from server\n");
+        return 1;
+    }
+    printf("[Client] Disconnected\n");
+
+    return exit;
 }
