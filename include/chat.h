@@ -97,8 +97,6 @@ bool reactivate_connection(Connections* connections, Connection incoming);
 // Shutdown flag for signal handling
 extern volatile sig_atomic_t running;
 
-void kill_sig(int sig);
-
 void setup_signal_handler(void);
 
 SignalResponse is_signal_ready(int max_fd, fd_set* read_fds);
