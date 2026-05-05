@@ -56,17 +56,21 @@ typedef struct {
     } type_data;
 } Message;
 
-typedef struct {
-    char ip[INET_ADDRSTRLEN];
-    int fd;
-    bool active;
-} Connection;
 
 typedef struct {
-    Connection* data;
+    void* data;
+    size_t data_size;
     size_t len;
     size_t cap;
-} Connections;
+} List;
+
+List init_list(size_t data_size, size_t cap);
+
+void deinit_list(List*);
+
+// Copies data into list by value
+void append_list(List*, const void* data);
+void* get_list(List, size_t n);
 
 typedef enum {
     FD_ERROR,
@@ -84,13 +88,6 @@ ssize_t send_message(int fd, const ClientMessage* message);
 // Receive a message
 Message receive_message(int fd);
 
-Connections init_connections(void);
-
-void deinit_connections(Connections* connections);
-
-void add_connection(Connections* connections, Connection connection);
-
-bool reactivate_connection(Connections* connections, Connection incoming);
 
 // Shutdown flag for signal handling
 extern volatile sig_atomic_t running;

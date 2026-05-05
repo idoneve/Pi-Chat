@@ -35,49 +35,41 @@ SignalResponse is_signal_ready(int max_fd, fd_set* read_fds) {
     return SIGNAL;
 }
 
-Connections init_connections(void) {
-    return (Connections) {
-        .data = malloc(sizeof(Connection) * MAX_CONNECTIONS),
+// Allocates data if cap > 0
+List init_list(size_t data_size, size_t cap) {
+    return (List) {
+        .data = cap == 0 ? NULL : malloc(data_size * cap),
+        .data_size = data_size,
+        .cap = cap,
         .len = 0,
-        .cap = MAX_CONNECTIONS,
     };
 }
 
-void deinit_connections(Connections* connections) {
-    free(connections->data);
-    connections->data = NULL;
-    connections->len = 0;
-    connections->cap = 0;
-}
+void deinit_list(List* list) { free(list->data); }
 
-void add_connection(Connections* connections, Connection connection) {
-    if (connections->len == connections->cap) {
-        Connection* old_data = connections->data;
+void append_list(List* list, const void* data) {
+    if (list->len == list->cap) {
+        void* old_data = list->data;
 
-        connections->cap *= 2;
-        connections->data = malloc(sizeof(Connection) * connections->cap);
-        memcpy(connections->data, old_data, connections->len * sizeof(Connection));
-        free(old_data);
-    }
+        if (list->cap == 0)
+            list->cap = 1;
+        else
+            list->cap *= 2;
 
-    connections->data[connections->len++] = connection;
-}
+        list->data = malloc(list->cap * list->data_size);
 
-bool reactivate_connection(Connections* connections, Connection incoming) {
-    for (size_t i = 0; i < connections->len; i++) {
-        Connection* existing = &connections->data[i];
-
-        if (existing->active)
-            continue;
-
-        if (strcmp(existing->ip, incoming.ip) == 0) {
-            *existing = incoming;
-
-            return true;
+        if (old_data != NULL){
+            memcpy(list->data, old_data, list->data_size * list->len);
+            free(old_data);
         }
     }
-    return false;
+
+    // cast void* data to a array of bytes and retreive element
+    char* element = ((char*)list->data) + (list->len * list->data_size);
+    memcpy(element, data, list->data_size);
 }
+
+void* get_list(List list, size_t n) { return ((char*)list.data) + n * list.data_size; }
 
 static void kill_sig(int sig) {
     (void)sig;

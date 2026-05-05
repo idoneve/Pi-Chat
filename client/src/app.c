@@ -7,7 +7,7 @@
 #include <clay.h>
 #include <app.h>
 #include <clay_renderer_raylib.c>
-#include <sys/select.h>
+#include <sys/ioctl.h>
 #include "chat.h"
 #include "raylib.h"
 #include "ui_models.h"
@@ -92,7 +92,7 @@ void update_app_state(AppState* state) {
 
     state->mouse.position = (Clay_Vector2) { .x = mousePosition.x, .y = mousePosition.y };
     state->mouse.scroll = (Clay_Vector2) { .x = mouseScroll.x, .y = mouseScroll.y };
-    state->deltaTime = (double)GetFrameTime();
+    state->deltaTime = GetFrameTime();
 
     Clay_SetLayoutDimensions(state->screenDimensions);
     Clay_SetPointerState(state->mouse.position, IsMouseButtonDown(MOUSE_BUTTON_LEFT));
@@ -128,89 +128,81 @@ void HandleClayErrors(Clay_ErrorData errorData) {
     }
 }
 
-static size_t listen_for_messages(int socket_fd, Message* buf, size_t buf_len) {
-    // TODO - Poll server for incoming events - do not block if no events ready
-    // TODO - Parse message header for connection information.
-    //   if message is activity request return activity message
-    return 0;
+// Returns number of messages received
+static Messages listen_for_messages(int socket_fd) {
+    Messages result = { .internal = init_list(sizeof(Message), 0) };
+
+    size_t bytes_avaliable;
+    do {
+        ioctl(socket_fd, FIONREAD, &bytes_avaliable);
+        if (bytes_avaliable == 0)
+            break;
+
+        Message m = receive_message(socket_fd);
+        append_list(&result.internal, &m);
+    } while (bytes_avaliable != 0);
+
+    return result;
 }
 
-static ClientConnection* map_message_to_connection(AppModel* model, ClientMessage* message) {
-    ClientConnection* match = NULL;
+static Connections init_connections(void) {
+    return (Connections) { .internal = init_list(sizeof(Connection), 1) };
+}
+
+static void deinit_connections(Connections connections) { deinit_list(&connections.internal); }
+
+static void add_connection(Connections connections, Connection connection) {
+    append_list(&connections.internal, &connection);
+}
+
+Connection* get_selected_connection(Connections connections){
+    return get_list(connections.internal, connections.selected);
+}
+
+static Connection* map_message_to_connection(AppModel* model, ClientMessage* message) {
+    Connection* match = NULL;
 
     // we know the data is a RECEIVE message
     char* message_source = message->ip;
     size_t source_len = sizeof(message->ip);
-    for (size_t i = 0; i < model->connections.len; i++) {
+    for (size_t i = 0; i < model->connections.internal.len; i++) {
+        Connection* connection = get_list(model->connections.internal, i);
 
-        if (strncmp(model->connections.data[i].dest, message_source, source_len) == 0) {
-            match = &model->connections.data[i];
+        if (strncmp(connection->dest, message_source, source_len) == 0) {
+            match = connection;
         }
     }
 
     if (match == NULL) {
-        if (model->connections.len == model->connections.cap) {
-            // reallocate connection buffer and copy data
-            ClientConnection* old_data = model->connections.data;
-
-            model->connections.cap = model->connections.len * 2;
-            model->connections.data = malloc(sizeof(ClientConnection) * model->connections.cap);
-
-            memcpy(model->connections.data, old_data, model->connections.len * sizeof(ClientConnection));
-            free(old_data);
-        }
-
-        ClientConnection* end = &model->connections.data[model->connections.len];
-
         // add new connection
-        *end = (ClientConnection) { 
+        Connection new_connection = (Connection) { 
             .messages = {
-                .data = malloc(sizeof(ClientMessage) * 5),
-                .len = 0,
-                .cap = 5,
+                .internal = init_list(sizeof(ClientMessage), 5),
             }, 
             .is_active = true, .user_input = {.len = 0, .cursor = 0}};
 
-        // copy source char[16] into connection dest char[16]
-        memcpy(end->dest, message_source, source_len);
-
-        model->connections.len += 1;
-
-        match = &model->connections.data[model->connections.len - 1];
+        add_connection(model->connections, new_connection);
     }
 
     return match;
 }
 
-static void add_message_to_connection(ClientConnection* connection, ClientMessage* message) {
-    if (connection->messages.len == connection->messages.cap) {
-        // Resize message buffer
-        ClientMessage* old_data = connection->messages.data;
-
-        connection->messages.cap = connection->messages.len * 2;
-        connection->messages.data = malloc(sizeof(ClientMessage) * connection->messages.cap);
-        memcpy(connection->messages.data, old_data, connection->messages.len);
-        free(old_data);
-    }
-
-    // add new message
-    connection->messages.data[connection->messages.len] = *message;
-    connection->messages.len++;
+static void add_message_to_connection(Connection* connection, ClientMessage* message) {
+    append_list(&connection->messages.internal, message);
 }
 
 static void update_connections(int socket_fd, AppModel* model) {
-    Message incoming[5];
-    size_t recieved;
-    while ((recieved = listen_for_messages(socket_fd, incoming, 5)) != 0) {
+    Messages incoming;
+    while ((incoming = listen_for_messages(socket_fd)).internal.len != 0) {
         ClientMessage* client_message = NULL;
 
-        for (size_t i = 0; i < recieved; i++) {
-            Message message = incoming[i];
+        for (size_t i = 0; i < incoming.internal.len; i++) {
+            Message* message = get_list(incoming.internal, i);
 
-            switch (message.type) {
+            switch (message->type) {
             case MESSAGE:
-                client_message = &message.type_data.message;
-                ClientConnection* connection = map_message_to_connection(model, client_message);
+                client_message = &message->type_data.message;
+                Connection* connection = map_message_to_connection(model, client_message);
                 add_message_to_connection(connection, client_message);
                 break;
             case INVALID:
@@ -226,14 +218,14 @@ static void update_connections(int socket_fd, AppModel* model) {
 
 void update_app_model(int socket_fd, AppModel* model) {
     update_connections(socket_fd, model);
-    if (model->connections.len != model->tabs.len) {
-        if (model->connections.len == 0)
+    if (model->connections.internal.len != model->tabs.len) {
+        if (model->connections.internal.len == 0)
             return;
 
         if (model->tabs.len > 0)
             free(model->tabs.data);
 
-        model->tabs.len = model->connections.len;
+        model->tabs.len = model->connections.internal.len;
         model->tabs.data = malloc(sizeof(TabModel) * model->tabs.len);
 
         if (model->tabs.data == NULL) {
@@ -245,7 +237,7 @@ void update_app_model(int socket_fd, AppModel* model) {
     TabModel* tabs = model->tabs.data;
     for (size_t i = 0; i < model->tabs.len; i++) {
         TabModel* tab = &tabs[i];
-        const ClientConnection* connection = &model->connections.data[i];
+        const Connection* connection = get_list(model->connections.internal, i);
 
         tab->index = i;
         tab->is_active = connection->is_active;
@@ -255,27 +247,18 @@ void update_app_model(int socket_fd, AppModel* model) {
 }
 
 AppModel init_app_model(void) {
-    return (AppModel) { 
-            .connections = {
-                .data = malloc(sizeof(ClientConnection)),
-                .len = 0,
-                .cap = 1,
-            },
-           .tabs = {.data = NULL, .len = 0},
+    return (AppModel) {
+        .connections = init_connections(),
+        .tabs = { .data = NULL, .len = 0 },
     };
 }
 
 void deinit_app_model(AppModel* model) {
-    for (size_t i = 0; i < model->connections.len; i++) {
-        ClientConnection* connection = &model->connections.data[i];
-        for (size_t j = 0; j < connection->messages.len; j++) {
-            ClientMessage* message = &connection->messages.data[j];
-            free(message->content.data);
-        }
-        free(connection->messages.data);
-        free(connection->user_input.data);
+    for (size_t i = 0; i < model->connections.internal.len; i++) {
+        Connection* connection = get_list(model->connections.internal, i);
+        deinit_list(&connection->messages.internal);
     }
 
-    free(model->connections.data);
+    deinit_list(&model->connections.internal);
     free(model->tabs.data);
 }

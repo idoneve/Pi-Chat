@@ -85,7 +85,7 @@ static size_t empty_buffer(char* data, size_t len) {
     return 0;
 }
 
-static void handle_text_input(ClientConnection* selected) {
+static void handle_text_input(Connection* selected) {
     char* user_input = selected->user_input.data;
     size_t* input_len = &selected->user_input.len;
     size_t* cursor = &selected->user_input.cursor;
@@ -145,8 +145,8 @@ static void message_entry(AppModel* model) {
         .border = {.width = CLAY_BORDER_OUTSIDE(5), .color = COLOR_LIGHT},
         .clip = {.vertical = true, .horizontal = false, .childOffset = Clay_GetScrollOffset()}
     }) {
-        if (model->connections.len != 0) {
-            ClientConnection* selected = &model->connections.data[model->connections.selected];
+        if (model->connections.internal.len != 0) {
+            Connection* selected = get_selected_connection(model->connections);
 
             handle_text_input(selected);
 
@@ -187,8 +187,8 @@ static void submit_button(AppModel* model) {
     }){
 
             if (Clay_Hovered() && IsMouseButtonPressed(MOUSE_BUTTON_LEFT)
-                && model->connections.len != 0) {
-                ClientConnection* selected = &model->connections.data[model->connections.selected];
+                && model->connections.internal.len != 0) {
+                Connection* selected = get_selected_connection(model->connections);
 
                 // TODO send message
                 selected->user_input.len = 0;
@@ -222,12 +222,12 @@ void chat_window(AppModel* model) {
                 .layoutDirection = CLAY_TOP_TO_BOTTOM,
                 .childAlignment = { .y = CLAY_ALIGN_Y_TOP } } }) {
 
-            if (model->connections.len != 0) {
-                ClientConnection* active_connection
-                    = &model->connections.data[model->connections.selected];
+            if (model->connections.internal.len != 0) {
+                Connection* active_connection = get_selected_connection(model->connections);
 
-                for (size_t i = 0; i < active_connection->messages.len; i++) {
-                    chat_message(i, &active_connection->messages.data[i]);
+                for (size_t i = 0; i < active_connection->messages.internal.len; i++) {
+                    ClientMessage* m = get_list(active_connection->messages.internal, i);
+                    chat_message(i, m);
                 }
             }
         }
