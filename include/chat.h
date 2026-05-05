@@ -99,6 +99,21 @@ static void add_connection(Connections* connections, Connection connection) {
     connections->data[connections->len++] = connection;
 }
 
+static bool reactivate_connection(Connections* connections, Connection incoming) {
+    for (size_t i = 0; i < connections->len; i++) {
+        Connection* existing = &connections->data[i];
+
+        if (existing->active)
+            continue;
+
+        if (strcmp(existing->ip, incoming.ip) == 0) {
+            *existing = incoming;
+            return true;
+        }
+    }
+    return false;
+}
+
 // Shutdown flag for signal handling
 extern volatile sig_atomic_t running;
 
