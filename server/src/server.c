@@ -137,7 +137,7 @@ static AcceptError accept_clients(int server_fd, Connections* connections, fd_se
 }
 
 static int route_message(
-    size_t current_connection, const Connections* connections, ClientMessage* message) {
+    const Connection* source, const Connections* connections, ClientMessage* message) {
 
     if (message->type == SEND) {
         printf("[ERROR] Send message given to router");
@@ -162,12 +162,12 @@ static int route_message(
     memcpy(message->ip, connections->data[destination].ip, sizeof(message->ip));
 
     // Broadcast message to routed client
-    if (send_message(connections->data->fd, message) < 0) {
+    if (send_message(source->fd, message) < 0) {
         perror("[ERROR] Could not broadcast message\n");
     }
 
-    printf("\t[Server] Broadcasted message from fd %d to fd %d\n",
-        connections->data[current_connection].fd, connections->data[destination].fd);
+    printf("\t[Server] Broadcasted message from fd %d to fd %d\n", source->fd,
+        connections->data[destination].fd);
 
     return 0;
 }
@@ -204,7 +204,7 @@ static void check_for_messages(Connections* connections, fd_set* read_fds) {
 
         ClientMessage* client_message = &message.type_data.message;
 
-        if (route_message(i, connections, client_message) < 0) {
+        if (route_message(&connections->data[i], connections, client_message) < 0) {
             printf("[SERVER] failed to route message");
             continue;
         }
