@@ -239,15 +239,14 @@ int main(void) {
         }
         printf("\t[Server] A signal is being processed...\n");
 
-        ssize_t accept_response;
-        if ((accept_response = accept_clients(server_fd, &connections, &read_fds)) != NONE) {
-            switch (accept_response) {
-            case ACCEPT_ERROR:
-                perror("[ERROR] Could not accept client\n");
-                break;
-            case IP_ERROR:
-                continue;
-            }
+        switch (accept_clients(server_fd, &connections, &read_fds)) {
+        case ACCEPT_ERROR:
+            perror("[ERROR] Could not accept client\n");
+            continue;
+        case IP_ERROR:
+            continue;
+        case NONE:
+            break;
         }
 
         check_for_messages(&connections, &read_fds);
