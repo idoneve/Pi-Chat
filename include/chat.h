@@ -12,7 +12,6 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
-#include <errno.h>
 
 #define PORT 8080
 #define MAX_MSG_LEN 4096
@@ -49,7 +48,7 @@ typedef struct {
     // Readable Ip Source
 } ClientMessage;
 
-typedef enum { MESSAGE, INVALID, DISCONNECT } MessageType;
+typedef enum { MESSAGE = 1, INVALID = -1, DISCONNECT = 0} MessageType;
 
 typedef struct {
     MessageType type;
@@ -77,6 +76,16 @@ typedef enum {
     INTERRUPT,
 } SignalResponse;
 
+int create_socket(void);
+
+struct sockaddr_in configure_socket(void);
+
+// Send a HEADER prefixed message
+ssize_t send_message(int fd, const ClientMessage* message);
+
+// Receive a message
+Message receive_message(int fd);
+
 Connections init_connections(void);
 
 void deinit_connections(Connections* connections);
@@ -88,21 +97,9 @@ bool reactivate_connection(Connections* connections, Connection incoming);
 // Shutdown flag for signal handling
 extern volatile sig_atomic_t running;
 
-inline void kill_sig(int sig);
+void kill_sig(int sig);
 
-inline void setup_signal_handler(void);
-
-// Pack a message with length prefix, returns total bytes to send
-inline ssize_t pack_message(const ClientMessage* message, char* out_buf, size_t buf_size);
-
-inline Message unpack_message(int fd);
-
-// Send a length-prefixed message
-inline ssize_t send_message(int fd, const ClientMessage* message);
-
-int create_socket(void);
-
-struct sockaddr_in configure_socket(void);
+void setup_signal_handler(void);
 
 SignalResponse is_signal_ready(int max_fd, fd_set* read_fds);
 

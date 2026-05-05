@@ -1,4 +1,39 @@
 #include <chat.h>
+#include <errno.h>
+#include <stddef.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+// Shutdown flag for signal handling
+extern volatile sig_atomic_t running;
+
+int create_socket(void) {
+    int server_fd = socket(AF_INET, SOCK_STREAM, 0);
+    if (server_fd < 0) {
+        perror("[ERROR] Failed to create socket\n");
+        exit(1);
+    }
+    return server_fd;
+}
+
+struct sockaddr_in configure_socket(void) {
+    struct sockaddr_in addr;
+    addr.sin_family = AF_INET; // Use ipv4
+    addr.sin_port = htons(PORT); // Get port
+    return addr;
+}
+
+SignalResponse is_signal_ready(int max_fd, fd_set* read_fds) {
+    if (select(max_fd + 1, read_fds, NULL, NULL, NULL) < 0) {
+        if (errno == EINTR) {
+            return INTERRUPT; // ctrl+C was pressed
+        } else {
+            return FD_ERROR;
+        }
+    }
+    return SIGNAL;
+}
 
 Connections init_connections(void) {
     return (Connections) {
@@ -44,15 +79,7 @@ bool reactivate_connection(Connections* connections, Connection incoming) {
     return false;
 }
 
-// Shutdown flag for signal handling
-extern volatile sig_atomic_t running;
-
-inline void kill_sig(int sig) {
-    (void)sig;
-    running = 0;
-}
-
-inline void setup_signal_handler(void) {
+void setup_signal_handler(void) {
     struct sigaction sa;
     sa.sa_handler = kill_sig;
     sa.sa_flags = 0;
@@ -60,8 +87,13 @@ inline void setup_signal_handler(void) {
     sigaction(SIGINT, &sa, NULL);
 }
 
+void kill_sig(int sig) {
+    (void)sig;
+    running = 0;
+}
+
 // Pack a message with length prefix, returns total bytes to send
-inline ssize_t pack_message(const ClientMessage* message, char* out_buf, size_t buf_size) {
+static ssize_t pack_message(const ClientMessage* message, char* out_buf, size_t buf_size) {
     if (message->content.len + HEADER_SIZE > buf_size)
         return -1; // msg too big
 
@@ -76,92 +108,8 @@ inline ssize_t pack_message(const ClientMessage* message, char* out_buf, size_t 
     return (ssize_t)(message->content.len + HEADER_SIZE);
 }
 
-inline Message unpack_message(int fd) {
-    printf("\t[DEBUG] Beginning unpack\n");
-    uint32_t net_len;
-    size_t msg_len;
-
-    Message result;
-
-    ssize_t n;
-
-    char type[HEADER_TYPE_SIZE];
-    n = recv(fd, type, HEADER_TYPE_SIZE, 0);
-    if (n == 0) {
-        return (Message) { .type = DISCONNECT };
-    } else if (n < 0) {
-        printf("[DEBUG] Invalid type received\n");
-        return (Message) { .type = INVALID };
-    }
-
-    result.type = (MessageType)*type;
-
-    printf("[DEBUG] Received regular message\n");
-
-    char dest_buf[HEADER_ADDR_SIZE];
-    n = recv(fd, dest_buf, HEADER_ADDR_SIZE, 0);
-    if (n == 0) {
-        return (Message) { .type = DISCONNECT };
-    } else if (n < 0) {
-        perror("[DEBUG] Invalid address received\n");
-        return (Message) { .type = INVALID };
-    }
-
-    if (n < HEADER_ADDR_SIZE) {
-        dest_buf[n] = '\0';
-        printf("[DEBUG] Invalid address received: %s\n", dest_buf);
-        return (Message) { .type = INVALID };
-    }
-
-    printf("[DEBUG] destination address %s received\n", dest_buf);
-
-    // Copy address into receive ClientMessage
-    result.type_data.message = (ClientMessage) { .type = RECEIVE };
-    memcpy(result.type_data.message.ip, dest_buf, HEADER_ADDR_SIZE);
-
-    // Read 4-byte length header
-    n = recv(fd, &net_len, HEADER_LEN_SIZE, 0);
-    if (n == 0) {
-        return (Message) { .type = DISCONNECT };
-    } else if (n < 0) {
-        return (Message) { .type = INVALID };
-    }
-
-    if (n < HEADER_LEN_SIZE)
-        return (Message) { .type = INVALID }; // Incomplete header
-
-    msg_len = ntohl(net_len);
-    if (msg_len <= 0 || msg_len >= MAX_MSG_LEN)
-        return (Message) { .type = INVALID };
-
-    printf("[DEBUG] message length %d received\n", msg_len);
-
-    result.type_data.message.content.len = msg_len;
-    char** msg_data = &result.type_data.message.content.data;
-    *msg_data = malloc(msg_len + 1);
-
-    // Read the actual message
-    ssize_t total = 0;
-    while (total < (ssize_t)msg_len) {
-        n = recv(fd, *msg_data + total, msg_len - (size_t)total, 0);
-        if (n == 0) {
-            free(*msg_data);
-            return (Message) { .type = DISCONNECT };
-        } else if (n < 0) {
-            free(*msg_data);
-            return (Message) { .type = INVALID };
-        }
-        total += n;
-    }
-    (*msg_data)[msg_len] = '\0';
-
-    printf("[DEBUG] message %s received\n", *msg_data);
-
-    return result;
-}
-
 // Send a length-prefixed message
-inline ssize_t send_message(int fd, const ClientMessage* message) {
+ssize_t send_message(int fd, const ClientMessage* message) {
     char packet[MAX_MSG_LEN + HEADER_SIZE];
     ssize_t total = pack_message(message, packet, sizeof(packet));
     if (total < 0)
@@ -177,35 +125,94 @@ inline ssize_t send_message(int fd, const ClientMessage* message) {
     return sent - HEADER_SIZE; // Payload bytes sent
 }
 
-int create_socket(void) {
-    int server_fd = socket(AF_INET, SOCK_STREAM, 0);
-    if (server_fd < 0) {
-        perror("[ERROR] Failed to create socket\n");
-        exit(1);
+// Returns message type if disconnected or invalid or length of message content
+static ssize_t unpack_message(int fd, char buffer[HEADER_SIZE + MAX_MSG_LEN]) {
+    printf("\t[DEBUG] Beginning unpack\n");
+    ssize_t msg_len;
+
+    ssize_t n;
+
+    n = recv(fd, buffer, HEADER_TYPE_SIZE, 0);
+    if (n == 0) {
+        return DISCONNECT;
+    } else if (n < 0) {
+        printf("[DEBUG] Invalid type received\n");
+        return INVALID;
     }
-    return server_fd;
-}
 
-struct sockaddr_in configure_socket(void) {
-    struct sockaddr_in addr;
-    addr.sin_family = AF_INET; // Use ipv4
-    addr.sin_port = htons(PORT); // Get port
-    return addr;
-}
+    printf("[DEBUG] Received regular message\n");
 
-typedef enum {
-    FD_ERROR,
-    SIGNAL,
-    INTERRUPT,
-} SignalResponse;
+    n = recv(fd, buffer + HEADER_TYPE_SIZE, HEADER_ADDR_SIZE, 0);
+    if (n == 0) {
+        return DISCONNECT;
+    } else if (n < 0) {
+        perror("[DEBUG] Invalid address received\n");
+        return INVALID;
+    }
 
-SignalResponse is_signal_ready(int max_fd, fd_set* read_fds) {
-    if (select(max_fd + 1, read_fds, NULL, NULL, NULL) < 0) {
-        if (errno == EINTR) {
-            return INTERRUPT; // ctrl+C was pressed
-        } else {
-            return FD_ERROR;
+    if (n < HEADER_ADDR_SIZE) {
+        (buffer + HEADER_TYPE_SIZE)[n] = '\0';
+        printf("[DEBUG] Invalid address received: %s\n", buffer + HEADER_TYPE_SIZE);
+        return INVALID;
+    }
+
+    printf("[DEBUG] destination address %s received\n", buffer + HEADER_TYPE_SIZE);
+
+    // Read 4-byte length header
+    uint32_t net_len;
+    n = recv(fd, &net_len, HEADER_LEN_SIZE, 0);
+    if (n == 0) {
+        return DISCONNECT;
+    } else if (n < 0) {
+        return INVALID;
+    }
+
+    if (n < HEADER_LEN_SIZE)
+        return INVALID; // Incomplete header
+
+    msg_len = ntohl(net_len);
+    if (msg_len <= 0 || msg_len >= MAX_MSG_LEN)
+        return INVALID;
+
+    printf("[DEBUG] message length %d received\n", msg_len);
+
+    char* msg_data = (buffer + HEADER_SIZE);
+
+    // Read the actual message
+    ssize_t total = 0;
+    while (total < msg_len) {
+        n = recv(fd, msg_data + total, (size_t)(msg_len - total), 0);
+        if (n == 0) {
+            return DISCONNECT;
+        } else if (n < 0) {
+            return INVALID;
         }
+        total += n;
     }
-    return SIGNAL;
+    msg_data[msg_len] = '\0';
+
+    return msg_len;
+}
+
+Message receive_message(int fd) {
+    char buffer[MAX_MSG_LEN + HEADER_SIZE];
+    ssize_t len;
+    switch (len = unpack_message(fd, buffer)) {
+    case INVALID:
+        return (Message) { .type = INVALID };
+    case DISCONNECT:
+        return (Message) { .type = DISCONNECT };
+    default:
+        Message result = { .type = MESSAGE };
+        ClientMessage* message = &result.type_data.message;
+        message->type = RECEIVE;
+
+        // Copy address into message
+        memcpy(message->ip, buffer + HEADER_TYPE_SIZE, HEADER_ADDR_SIZE);
+        // Copy message content into message
+        message->content.data = malloc((size_t)len);
+        memcpy(message->content.data, buffer + HEADER_TYPE_SIZE + HEADER_ADDR_SIZE, (size_t)len);
+
+        return result;
+    }
 }

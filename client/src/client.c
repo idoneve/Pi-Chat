@@ -117,7 +117,7 @@ static int start_cli(int socket_fd) {
         if (!destination_received)
             printf("\n\t[CLIENT] Server messsage received first\n");
 
-        Message m = unpack_message(socket_fd);
+        Message m = receive_message(socket_fd);
 
         if (m.type == DISCONNECT) {
             printf("[Client] Server has disconnected\n");
