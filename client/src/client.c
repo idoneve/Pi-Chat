@@ -52,7 +52,7 @@ static int start_cli(int socket_fd) {
         printf("[CLIENT] Waiting for input.\n");
 
         bool destination_received = false;
-        printf("[CLIENT] Enter Destination Address:");
+        printf("[CLIENT] Enter Destination Address\n->");
         fflush(stdout);
 
         SignalResponse signal_response;
