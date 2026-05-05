@@ -100,8 +100,8 @@ static int get_readable_ip(int fd, char* buf, size_t buf_len) {
 }
 
 typedef enum {
-    FULL_ERROR = -1,
     ACCEPT_ERROR = -2,
+    IP_ERROR = -1,
     NONE = 0,
 } AcceptError;
 
@@ -114,9 +114,6 @@ static AcceptError accept_clients(int server_fd, Connections* connections, fd_se
     int client_fd = accept_client(server_fd);
     if (client_fd < 0) {
         return ACCEPT_ERROR;
-    } else if (connections->len >= MAX_CONNECTIONS) {
-        close(client_fd);
-        return FULL_ERROR;
     } else {
 
         Connection c = (Connection) {
@@ -125,8 +122,8 @@ static AcceptError accept_clients(int server_fd, Connections* connections, fd_se
         };
 
         if (get_readable_ip(client_fd, c.ip, sizeof(c.ip)) < 0) {
-            printf("[FATAL] client ip could not be determined");
-            exit(0);
+            perror("[ERROR] client ip could not be determined");
+            return IP_ERROR;
         }
 
         add_connection(connections, c);
@@ -243,22 +240,19 @@ int main(void) {
         printf("\t[Server] A signal is being processed...\n");
 
         ssize_t accept_response;
-        if ((accept_response = accept_clients(server_fd, &connections, &read_fds)) < 0) {
+        if ((accept_response = accept_clients(server_fd, &connections, &read_fds)) != NONE) {
             switch (accept_response) {
             case ACCEPT_ERROR:
                 perror("[ERROR] Could not accept client\n");
                 break;
-            case FULL_ERROR:
-                printf("\t[Server] Server is full\n");
-                break;
-
-            default:
-                break;
+            case IP_ERROR:
+                continue;
             }
         }
 
         check_for_messages(&connections, &read_fds);
     }
 
+    deinit_connections(&connections);
     return close_server(server_fd);
 }
