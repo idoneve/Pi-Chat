@@ -72,7 +72,8 @@ static int load_connections(int server_fd, Connections* connections, fd_set* rea
     FD_SET(server_fd, read_fds); // Load server into reader
     int max_fd = server_fd;
     for (size_t i = 0; i < connections->len; ++i) {
-        if (!connections->data[i].active) continue;
+        if (!connections->data[i].active)
+            continue;
 
         FD_SET(connections->data[i].fd, read_fds); // Load clients into reader
         if (connections->data[i].fd > max_fd) {
@@ -161,8 +162,7 @@ static int route_message(
     memcpy(message->ip, connections->data[destination].ip, sizeof(message->ip));
 
     // Broadcast message to routed client
-    if (send(connections->data[destination].fd, message->content.data, message->content.len, 0)
-        < 0) {
+    if (send_message(connections->data->fd, message) < 0) {
         perror("[ERROR] Could not broadcast message\n");
     }
 
@@ -204,7 +204,7 @@ static void check_for_messages(Connections* connections, fd_set* read_fds) {
 
         ClientMessage* client_message = &message.type_data.message;
 
-        if (route_message(i, connections, client_message) < 0){
+        if (route_message(i, connections, client_message) < 0) {
             printf("[SERVER] failed to route message");
             continue;
         }
@@ -226,7 +226,7 @@ int main(void) {
     fd_set read_fds;
     while (running) {
         // Create fd reader
-        int max_fd = load_connections(server_fd, &connections, &read_fds );
+        int max_fd = load_connections(server_fd, &connections, &read_fds);
 
         // Only proceed if a watched fd is ready to read (no blocks)
         printf("[Server] Waiting for signal...\n");
