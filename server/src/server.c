@@ -162,7 +162,7 @@ static int route_message(
     memcpy(message->ip, connections->data[destination].ip, sizeof(message->ip));
 
     // Broadcast message to routed client
-    if (send_message(source->fd, message) < 0) {
+    if (send_message(connections->data[destination].fd, message) < 0) {
         perror("[ERROR] Could not broadcast message\n");
     }
 
