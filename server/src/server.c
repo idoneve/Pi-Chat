@@ -184,7 +184,7 @@ static void check_for_messages(Connections* connections, fd_set* read_fds) {
 
         char buf[HEADER_SIZE + MAX_MSG_LEN];
 
-        Message message = unpack_message(connections->data[i].fd);
+        Message message = receive_message(connections->data[i].fd);
         switch (message.type) {
         case INVALID:
             printf("Error: Malinformed Message Received");

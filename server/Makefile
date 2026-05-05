@@ -34,22 +34,31 @@ IP_ADDRESS ?= 127.0.0.1
 # Source files
 SERVER_SRC = src/server.c
 
-# Headers
-LOCAL_INCLUDE = ./include/
+SHARED_LIBRARY = ./lib/chat.a
+SHARED_SRC = ../lib/chat.c
 SHARED_INCLUDE = ../include/
 
-all: $(SERVER_TARGET) 
+# Headers
+LOCAL_INCLUDE = ./include/
 
-bin/server: $(SERVER_SRC) $(SERVER_HDR) | bin
-	$(CC) $(CFLAGS) -I$(LOCAL_INCLUDE) -I$(SHARED_INCLUDE) -o $@ $(SERVER_SRC)
+all: $(SHARED_LIBRARY) $(SERVER_TARGET) clean
+
+bin/server:$(SHARED_LIBRARY) $(SERVER_SRC) | bin
+	$(CC) $(CFLAGS) $(SERVER_SRC) $(SHARED_LIBRARY) -I$(LOCAL_INCLUDE) -I$(SHARED_INCLUDE) -o $@ 
 
 bin:
 	mkdir -p bin
+
+$(SHARED_LIBRARY): $(SHARED_SRC)
+	$(CC) $(CFLAGS) -c $< -o $@ -I $(SHARED_INCLUDE)
 
 run_server: $(SERVER_TARGET)
 	./$(SERVER_TARGET)
 
 clean:
-	rm -rf bin
+	rm -f $(SHARED_LIBRARY)
+	
+reset:
+	rm -rf ./bin/
 
-.PHONY: all run_server clean
+.PHONY: all run_server clean reset
