@@ -14,7 +14,7 @@
 // Contains UI rendering and interaction related data
 typedef struct {
     Clay_Arena arena;
-    uint32_t memorySize;
+    uint64_t memorySize;
     Clay_Dimensions screenDimensions;
 
     struct {
@@ -22,15 +22,12 @@ typedef struct {
         Clay_Vector2 scroll;
     } mouse;
 
-    double deltaTime;
+    float deltaTime;
 } AppState;
 
 // Contains any external data needed for the app (Fonts, Images, Etc)
 typedef struct {
-    struct {
-        Font* data;
-        size_t len;
-    } fonts;
+    Font fonts[2];
 } AppResources;
 
 // Represents a connection
@@ -51,12 +48,12 @@ typedef struct {
     // Readable name of ip destination
     char dest[INET_ADDRSTRLEN];
     bool is_active;
-} Connection;
+} ClientConnection;
 
 // Contains things necessary to create ui
 typedef struct {
     struct {
-        Connection* data;
+        ClientConnection* data;
         size_t len;
         size_t cap;
         size_t selected;
@@ -79,10 +76,10 @@ void reinitialize_app(AppState* state);
 
 void uninitialize_app(void);
 
-AppResources load_resources(Font* fonts, size_t font_count);
+AppResources* load_resources();
 void unload_resources(AppResources* resources);
 
-void draw_app(Clay_RenderCommandArray render_commands, const AppResources* resources);
+void draw_app(Clay_RenderCommandArray render_commands, AppResources* resources);
 
 void HandleClayErrors(Clay_ErrorData);
 
