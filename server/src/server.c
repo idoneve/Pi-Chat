@@ -126,7 +126,9 @@ static AcceptError accept_clients(int server_fd, Connections* connections, fd_se
             return IP_ERROR;
         }
 
-        add_connection(connections, c);
+        if (!reactivate_connection(connections, c)){
+            add_connection(connections, c);
+        }
 
         printf("\t[Server] Client connection accepted (fd %d: ip %s)\n", client_fd, c.ip);
         return NONE;
