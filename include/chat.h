@@ -132,6 +132,7 @@ static inline ssize_t pack_message(const ClientMessage* message, char* out_buf, 
 }
 
 static inline Message unpack_message(int fd) {
+    printf("\t[DEBUG] Beginning unpack\n");
     uint32_t net_len;
     size_t msg_len;
 
@@ -144,6 +145,7 @@ static inline Message unpack_message(int fd) {
     if (n == 0) {
         return (Message) { .type = DISCONNECT };
     } else if (n < 0) {
+        printf("[DEBUG] Invalid type received\n");
         return (Message) { .type = INVALID };
     }
 
@@ -161,10 +163,13 @@ static inline Message unpack_message(int fd) {
     if (n == 0) {
         return (Message) { .type = DISCONNECT };
     } else if (n < 0) {
+        perror("[DEBUG] Invalid address received\n");
         return (Message) { .type = INVALID };
     }
 
     if (n < HEADER_ADDR_SIZE) {
+        dest_buf[n] = '\0';
+        printf("[DEBUG] Invalid address received: %s\n", dest_buf);
         return (Message) { .type = INVALID };
     }
 
