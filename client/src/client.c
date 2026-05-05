@@ -128,8 +128,6 @@ static int start_cli(int socket_fd) {
         case INVALID:
             printf("[ERROR] Invalid message received from server\n");
             continue;
-        case ACTIVITY:
-            continue;
         case MESSAGE:
             if (m.type_data.message.type == SEND) {
                 printf("[ERROR] SEND message type received from server. Ignoring\n");

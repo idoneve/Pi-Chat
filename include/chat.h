@@ -49,7 +49,7 @@ typedef struct {
     // Readable Ip Source
 } ClientMessage;
 
-typedef enum { ACTIVITY, MESSAGE, INVALID, DISCONNECT } MessageType;
+typedef enum { MESSAGE, INVALID, DISCONNECT } MessageType;
 
 typedef struct {
     MessageType type;
@@ -107,8 +107,7 @@ static bool reactivate_connection(Connections* connections, Connection incoming)
             continue;
 
         if (strcmp(existing->ip, incoming.ip) == 0) {
-            existing->active = true;
-            close(incoming.fd);
+            *existing = incoming;
 
             return true;
         }
@@ -167,11 +166,6 @@ static inline Message unpack_message(int fd) {
     }
 
     result.type = (MessageType)*type;
-
-    if (result.type == ACTIVITY) {
-        printf("[DEBUG] Received activity message\n");
-        return result;
-    }
 
     printf("[DEBUG] Received regular message\n");
 

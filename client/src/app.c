@@ -208,9 +208,6 @@ static void update_connections(int socket_fd, AppModel* model) {
             Message message = incoming[i];
 
             switch (message.type) {
-            case ACTIVITY:
-                // Send response to server
-                break;
             case MESSAGE:
                 client_message = &message.type_data.message;
                 ClientConnection* connection = map_message_to_connection(model, client_message);

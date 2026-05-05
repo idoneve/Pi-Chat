@@ -126,7 +126,7 @@ static AcceptError accept_clients(int server_fd, Connections* connections, fd_se
             return IP_ERROR;
         }
 
-        if (!reactivate_connection(connections, c)){
+        if (!reactivate_connection(connections, c)) {
             add_connection(connections, c);
         }
 
@@ -189,13 +189,10 @@ static void check_for_messages(Connections* connections, fd_set* read_fds) {
         case INVALID:
             printf("Error: Malinformed Message Received");
             return;
-        case ACTIVITY:
-            // MARK CONNECTION AS ACTIVE
-            connections->data[i].active = true;
-            return;
         case DISCONNECT:
             printf("\t[Server] Client (fd %d) has disconnected\n", connections->data[i].fd);
             connections->data[i].active = false;
+            close(connections->data[i].fd);
             return;
         case MESSAGE:
             break;
