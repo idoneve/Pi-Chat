@@ -65,8 +65,7 @@ static int accept_client(int server_fd) {
     }
 }
 
-static int load_connections(
-    int server_fd, Connections* connections, fd_set* read_fds) {
+static int load_connections(int server_fd, Connections* connections, fd_set* read_fds) {
 
     FD_ZERO(read_fds);
 
@@ -137,10 +136,10 @@ static AcceptError accept_clients(int server_fd, Connections* connections, fd_se
 }
 
 static int route_message(
-    size_t current_connection, const Connections* connections, const ClientMessage* message) {
+    size_t current_connection, const Connections* connections, ClientMessage* message) {
 
-    if (message->type != SEND) {
-        printf("[ERROR] Receive message given to router");
+    if (message->type == SEND) {
+        printf("[ERROR] Send message given to router");
         return -1;
     }
 
@@ -157,6 +156,9 @@ static int route_message(
         printf("[ERROR] Unkown destination address provided");
         return (int)destination;
     }
+
+    // set destination to source
+    memcpy(message->ip, connections->data[destination].ip, sizeof(message->ip));
 
     // Broadcast message to routed client
     if (send(connections->data[destination].fd, message->content.data, message->content.len, 0)
