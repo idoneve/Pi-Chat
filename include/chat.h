@@ -107,7 +107,9 @@ static bool reactivate_connection(Connections* connections, Connection incoming)
             continue;
 
         if (strcmp(existing->ip, incoming.ip) == 0) {
-            *existing = incoming;
+            existing->active = true;
+            close(incoming.fd);
+
             return true;
         }
     }
