@@ -51,8 +51,10 @@ static int start_cli(int socket_fd) {
 
         printf("[CLIENT] Waiting for input.\n");
 
-        printf("[CLIENT] Enter Destination Address\n->");
+        bool destination_received = false;
+        printf("[CLIENT] Enter Destination Address:");
         fflush(stdout);
+
         SignalResponse signal_response;
         if ((signal_response = is_signal_ready(max_fd, &read_fds)) != SIGNAL) {
             if (signal_response == INTERRUPT) {
@@ -66,6 +68,8 @@ static int start_cli(int socket_fd) {
 
         // Signal from STDIN
         if (FD_ISSET(STDIN_FILENO, &read_fds)) {
+            destination_received = true;
+
             ClientMessage message = {
                 .type = SEND,
             };
@@ -110,6 +114,9 @@ static int start_cli(int socket_fd) {
         if (!FD_ISSET(socket_fd, &read_fds))
             continue;
 
+        if (!destination_received)
+            printf("\n\t[CLIENT] Server messsage received first\n");
+
         Message m = unpack_message(socket_fd);
 
         if (m.type == DISCONNECT) {
@@ -119,13 +126,13 @@ static int start_cli(int socket_fd) {
 
         switch (m.type) {
         case INVALID:
-            perror("[ERROR] Invalid message received from server");
+            printf("[ERROR] Invalid message received from server\n");
             continue;
         case ACTIVITY:
             continue;
         case MESSAGE:
             if (m.type_data.message.type == SEND) {
-                perror("[ERROR] SEND message type received from server. Ignoring");
+                printf("[ERROR] SEND message type received from server. Ignoring\n");
                 free(m.type_data.message.content.data);
                 continue;
             }
@@ -137,6 +144,7 @@ static int start_cli(int socket_fd) {
         printf(
             "[Client]: Recieved message from server: \"%s\"\n", m.type_data.message.content.data);
 
+        // Discard message after done
         free(m.type_data.message.content.data);
     }
 
