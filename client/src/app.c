@@ -14,13 +14,10 @@
 
 extern bool reinitializeClay;
 
-AppState initialize_app(Font* fonts) {
+AppState initialize_app(Font*) {
     uint64_t totalMemorySize = Clay_MinMemorySize();
     Clay_Arena arena
         = Clay_CreateArenaWithCapacityAndMemory(totalMemorySize, malloc(totalMemorySize));
-
-    Clay_Raylib_Initialize(1024, 768, "pi chat",
-        FLAG_WINDOW_RESIZABLE | FLAG_WINDOW_HIGHDPI | FLAG_MSAA_4X_HINT | FLAG_VSYNC_HINT);
 
     Clay_Dimensions dimensions = (Clay_Dimensions) {
         .width = (float)GetScreenWidth(),
@@ -31,8 +28,9 @@ AppState initialize_app(Font* fonts) {
     Vector2 mouseScroll = GetMouseWheelMoveV();
 
     Clay_Initialize(arena, dimensions, (Clay_ErrorHandler) { HandleClayErrors, NULL });
+    Clay_Raylib_Initialize(1024, 768, "pi chat",
+        FLAG_WINDOW_RESIZABLE | FLAG_WINDOW_HIGHDPI | FLAG_MSAA_4X_HINT | FLAG_VSYNC_HINT);
 
-    Clay_SetMeasureTextFunction(Raylib_MeasureText, fonts);
     return (AppState) {
         .arena = arena, .memorySize = totalMemorySize,
         .mouse = {
@@ -46,27 +44,32 @@ AppState initialize_app(Font* fonts) {
 
 void uninitialize_app(void) { Clay_Raylib_Close(); }
 
-AppResources load_resources(Font* fonts, size_t font_count) {
-    if (fonts == NULL) {
-        printf("[ERROR] Failed to allocate fonts\n");
-        exit(1);
-    }
+AppResources* load_resources() {
+    AppResources* resources = malloc(sizeof(AppResources));
 
-    return (AppResources) {
-        .fonts = { .data = fonts, .len = font_count },
-    };
+    resources->fonts[REGULAR_24] = LoadFontEx("./resources/Roboto-Regular.ttf", 24, NULL, 400);
+    resources->fonts[MONO_16] = LoadFontEx("./resources/RobotoMono-Medium.ttf", 16, NULL, 400);
+
+    printf("[CLIENT] Glyphys: %b\n",
+        resources->fonts[REGULAR_24].glyphs != 0 && resources->fonts[REGULAR_24].glyphs != 0);
+    Clay_SetMeasureTextFunction(Raylib_MeasureText, resources->fonts);
+    SetTextureFilter(resources->fonts[REGULAR_24].texture, TEXTURE_FILTER_BILINEAR);
+    SetTextureFilter(resources->fonts[MONO_16].texture, TEXTURE_FILTER_BILINEAR);
+
+    return resources;
 }
 
 void unload_resources(AppResources* resources) {
-    for (size_t i = 0; i < resources->fonts.len; i++) {
-        UnloadFont(resources->fonts.data[i]);
+    for (size_t i = 0; i < sizeof(resources->fonts) / sizeof(Font); i++) {
+        UnloadFont(resources->fonts[i]);
     }
+    free(resources);
 }
 
-void draw_app(Clay_RenderCommandArray render_commands, const AppResources* resources) {
+void draw_app(Clay_RenderCommandArray render_commands, AppResources* resources) {
     BeginDrawing();
     ClearBackground(BLACK);
-    Clay_Raylib_Render(render_commands, resources->fonts.data);
+    Clay_Raylib_Render(render_commands, resources->fonts);
     EndDrawing();
 }
 
@@ -84,16 +87,16 @@ void update_app_state(AppState* state) {
     Vector2 mousePosition = GetMousePosition();
     Vector2 mouseScroll = GetMouseWheelMoveV();
 
-    state->screenDimensions
-        = (Clay_Dimensions) { .width = (float)GetScreenWidth(), .height = (float)GetScreenHeight() };
+    state->screenDimensions = (Clay_Dimensions) { .width = (float)GetScreenWidth(),
+        .height = (float)GetScreenHeight() };
 
     state->mouse.position = (Clay_Vector2) { .x = mousePosition.x, .y = mousePosition.y };
     state->mouse.scroll = (Clay_Vector2) { .x = mouseScroll.x, .y = mouseScroll.y };
-    state->deltaTime = GetFrameTime();
+    state->deltaTime = (double)GetFrameTime();
 
     Clay_SetLayoutDimensions(state->screenDimensions);
     Clay_SetPointerState(state->mouse.position, IsMouseButtonDown(MOUSE_BUTTON_LEFT));
-    Clay_UpdateScrollContainers(true, state->mouse.scroll, state->deltaTime);
+    Clay_UpdateScrollContainers(true, state->mouse.scroll, (float)state->deltaTime);
 }
 
 Clay_RenderCommandArray get_layout(const AppResources*, AppModel* model) {

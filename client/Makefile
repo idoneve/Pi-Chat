@@ -53,7 +53,7 @@ all: reset $(TARGET) clean
 
 # Link
 $(TARGET): $(OBJ) | bin
-	$(CC) $(CFLAGS) $(OBJ) -o $(TARGET) $(RAYLIB) -lm  -I$(SHARED_INCLUDE) -I$(LOCAL_INCLUDE)
+	$(CC) $(CFLAGS) $(OBJ) $(RAYLIB) -o $(TARGET) -lm  -I$(SHARED_INCLUDE) -I$(LOCAL_INCLUDE)
 	rm -f $(OBJ)
 
 # Compile
@@ -66,11 +66,10 @@ bin:
 run_client: $(TARGET)
 	./$(TARGET) $(IP_ADDRESS)
 
-clean:
-	rm -f $(OBJ)
-
 reset:
 	rm -rf bin
 
+clean:
+	rm -f $(OBJ)
 
 .PHONY: all run_client clean reset

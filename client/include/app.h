@@ -27,10 +27,7 @@ typedef struct {
 
 // Contains any external data needed for the app (Fonts, Images, Etc)
 typedef struct {
-    struct {
-        Font* data;
-        size_t len;
-    } fonts;
+    Font fonts[2];
 } AppResources;
 
 // Represents a connection
@@ -79,10 +76,10 @@ void reinitialize_app(AppState* state);
 
 void uninitialize_app(void);
 
-AppResources load_resources(Font* fonts, size_t font_count);
+AppResources* load_resources();
 void unload_resources(AppResources* resources);
 
-void draw_app(Clay_RenderCommandArray render_commands, const AppResources* resources);
+void draw_app(Clay_RenderCommandArray render_commands, AppResources* resources);
 
 void HandleClayErrors(Clay_ErrorData);
 
