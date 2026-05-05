@@ -47,14 +47,20 @@ OBJ = $(SRC:.c=.o)
 
 # Headers
 LOCAL_INCLUDE = ./include/
+
+SHARED_LIBRARY = ./lib/chat.a
+SHARED_SRC = ../lib/chat.c
 SHARED_INCLUDE = ../include/
 
 all: reset $(TARGET) clean
 
 # Link
-$(TARGET): $(OBJ) | bin
-	$(CC) $(CFLAGS) $(OBJ) $(RAYLIB) -o $(TARGET) -lm  -I$(SHARED_INCLUDE) -I$(LOCAL_INCLUDE)
+$(TARGET): $(SHARED_LIBRARY) $(OBJ) | bin
+	$(CC) $(CFLAGS) $(OBJ) $(SHARED_LIBRARY) $(RAYLIB) -o $(TARGET) -lm  -I$(SHARED_INCLUDE) -I$(LOCAL_INCLUDE)
 	rm -f $(OBJ)
+
+$(SHARED_LIBRARY): $(SHARED_SRC)
+	$(CC) $(CFLAGS) -c $< -o $@ -I $(SHARED_INCLUDE)
 
 # Compile
 %.o: %.c
@@ -70,6 +76,6 @@ reset:
 	rm -rf bin
 
 clean:
-	rm -f $(OBJ)
+	rm -f $(OBJ) $(SHARED_LIBRARY)
 
 .PHONY: all run_client clean reset
