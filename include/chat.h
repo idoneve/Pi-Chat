@@ -44,8 +44,6 @@ typedef struct {
 
     // Holds destination when type is send, holds source when type is receive
     char ip[INET_ADDRSTRLEN];
-
-    // Readable Ip Source
 } ClientMessage;
 
 typedef enum { MESSAGE = 1, INVALID = -1, DISCONNECT = 0} MessageType;

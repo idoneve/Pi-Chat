@@ -79,17 +79,17 @@ bool reactivate_connection(Connections* connections, Connection incoming) {
     return false;
 }
 
+static void kill_sig(int sig) {
+    (void)sig;
+    running = 0;
+}
+
 void setup_signal_handler(void) {
     struct sigaction sa;
     sa.sa_handler = kill_sig;
     sa.sa_flags = 0;
     sigemptyset(&sa.sa_mask);
     sigaction(SIGINT, &sa, NULL);
-}
-
-void kill_sig(int sig) {
-    (void)sig;
-    running = 0;
 }
 
 // Pack a message with length prefix, returns total bytes to send
