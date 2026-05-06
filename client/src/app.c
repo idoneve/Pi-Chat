@@ -8,6 +8,7 @@
 #include <app.h>
 #include <clay_renderer_raylib.c>
 #include <sys/ioctl.h>
+#include <unistd.h>
 #include "chat.h"
 #include "raylib.h"
 #include "ui_models.h"
@@ -133,7 +134,7 @@ static Messages listen_for_messages(int socket_fd) {
     Messages result = { .internal = init_list(sizeof(Message), 0) };
 
     int bytes_avaliable;
-    while (ioctl(socket_fd, FIONREAD, &bytes_avaliable) == 0 && bytes_avaliable != 0) { 
+    while (ioctl(socket_fd, FIONREAD, &bytes_avaliable) == 0 && bytes_avaliable != 0) {
         Message m = receive_message(socket_fd);
         append_list(&result.internal, &m);
     }
@@ -141,15 +142,15 @@ static Messages listen_for_messages(int socket_fd) {
     return result;
 }
 
-static Connections init_connections(void) {
-    return (Connections) { .internal = init_list(sizeof(Connection), 0) };
+static Connections init_connections(int server) {
+    return (Connections) { .internal = init_list(sizeof(Connection), 0), .server = server };
 }
 
 static void deinit_connections(Connections* connections) {
     for (size_t i = 0; i < connections->internal.len; i++) {
         Connection* c = get_list(connections->internal, i);
-        for (size_t j = 0; j < connections->internal.len; j++) {
-            ClientMessage* m = get_list(connections->internal, j);
+        for (size_t j = 0; j < c->messages.internal.len; j++) {
+            ClientMessage* m = get_list(c->messages.internal, j);
             free(m->content.data);
         }
     }
@@ -199,9 +200,9 @@ static void add_message_to_connection(Connection* connection, ClientMessage* mes
     append_list(&connection->messages.internal, message);
 }
 
-static int update_connections(int socket_fd, AppModel* model) {
+static int update_connections(AppModel* model) {
     Messages incoming;
-    while ((incoming = listen_for_messages(socket_fd)).internal.len != 0) {
+    while ((incoming = listen_for_messages(model->connections.server)).internal.len != 0) {
         ClientMessage* client_message = NULL;
 
         for (size_t i = 0; i < incoming.internal.len; i++) {
@@ -226,10 +227,11 @@ static int update_connections(int socket_fd, AppModel* model) {
     return 0;
 }
 
-void update_app_model(int socket_fd, AppModel* model) {
-    if (update_connections(socket_fd, model) < 0) {
+void update_app_model(AppModel* model) {
+    if (update_connections(model) < 0) {
         // TODO process server disconnecct
-        exit(1);
+        close(model->connections.server);
+        model->connections.server = -1;
         return;
     };
 
@@ -263,9 +265,9 @@ void update_app_model(int socket_fd, AppModel* model) {
     }
 }
 
-AppModel init_app_model(void) {
+AppModel init_app_model(int fd) {
     return (AppModel) {
-        .connections = init_connections(),
+        .connections = init_connections(fd),
         .tabs = { .data = NULL, .len = 0 },
     };
 }
@@ -276,6 +278,6 @@ void deinit_app_model(AppModel* model) {
         deinit_list(&connection->messages.internal);
     }
 
-    deinit_list(&model->connections.internal);
+    deinit_connections(&model->connections);
     free(model->tabs.data);
 }
