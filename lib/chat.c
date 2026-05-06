@@ -58,7 +58,7 @@ void append_list(List* list, const void* data) {
 
         list->data = malloc(list->cap * list->data_size);
 
-        if (old_data != NULL){
+        if (old_data != NULL) {
             memcpy(list->data, old_data, list->data_size * list->len);
             free(old_data);
         }
@@ -67,6 +67,8 @@ void append_list(List* list, const void* data) {
     // cast void* data to a array of bytes and retreive element
     char* element = ((char*)list->data) + (list->len * list->data_size);
     memcpy(element, data, list->data_size);
+
+    list->len += 1;
 }
 
 void* get_list(List list, size_t n) { return ((char*)list.data) + n * list.data_size; }
@@ -87,7 +89,7 @@ void setup_signal_handler(void) {
 // Pack a message with length prefix, returns total bytes to send
 static ssize_t pack_message(const ClientMessage* message, char out_buf[HEADER_SIZE + MAX_MSG_LEN]) {
     printf("\t[DEBUG] Packing %s\n", message->content.data);
-    if (message->content.len > MAX_MSG_LEN){
+    if (message->content.len > MAX_MSG_LEN) {
         printf("\t[DEBUG] message too big %s\n", message->content.data);
         return -1; // msg too big
     }
