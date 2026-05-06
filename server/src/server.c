@@ -163,6 +163,7 @@ static int route_message(
     // Broadcast message to routed client
     if (send_message(connections->data[destination].fd, message) < 0) {
         perror("[ERROR] Could not broadcast message\n");
+        return -1;
     }
 
     printf("\t[Server] Broadcasted message from fd %d to fd %d\n", source->fd,
