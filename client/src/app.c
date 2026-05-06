@@ -132,15 +132,11 @@ void HandleClayErrors(Clay_ErrorData errorData) {
 static Messages listen_for_messages(int socket_fd) {
     Messages result = { .internal = init_list(sizeof(Message), 0) };
 
-    size_t bytes_avaliable;
-    do {
-        ioctl(socket_fd, FIONREAD, &bytes_avaliable);
-        if (bytes_avaliable == 0)
-            break;
-
+    int bytes_avaliable;
+    while (ioctl(socket_fd, FIONREAD, &bytes_avaliable) == 0 && bytes_avaliable != 0) { 
         Message m = receive_message(socket_fd);
         append_list(&result.internal, &m);
-    } while (bytes_avaliable != 0);
+    }
 
     return result;
 }
