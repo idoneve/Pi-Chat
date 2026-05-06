@@ -202,6 +202,7 @@ static int route_message(
     // Broadcast message to routed client
     if (send_message(destination->fd, message) < 0) {
         perror("[ERROR] Could not broadcast message\n");
+        return -1;
     }
 
     printf("\t[Server] Broadcasted message from fd %d to fd %d\n", source->fd, destination->fd);
@@ -244,7 +245,8 @@ static void check_for_messages(ServerConnections* connections, fd_set* read_fds)
             continue;
         }
 
-        printf("\t[Server] The message of size %zd has been broadcasted\n",
+        printf("\t[Server] The message %s of size %zd has been broadcasted\n",
+                client_message->content.data,
             client_message->content.len);
     }
 }
