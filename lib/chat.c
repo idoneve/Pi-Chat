@@ -190,7 +190,7 @@ static ssize_t unpack_message(int fd, char buffer[HEADER_SIZE + MAX_MSG_LEN]) {
     msg_data[msg_len] = '\0';
     printf("[DEBUG] message received %s\n", msg_data);
 
-    printf("[DEBUG] message length %s received\n", msg_data);
+    printf("[DEBUG] message data %s received\n", msg_data);
 
     return msg_len;
 }
@@ -211,7 +211,6 @@ Message receive_message(int fd) {
         // Copy address into message
         memcpy(message->ip, buffer + HEADER_TYPE_SIZE, HEADER_ADDR_SIZE);
         // Copy message content into message
-        message->content.data = malloc((size_t)len);
         message->content.len = (size_t)len;
         memcpy(message->content.data, buffer + HEADER_SIZE, (size_t)len);
 
