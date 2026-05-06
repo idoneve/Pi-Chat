@@ -101,8 +101,8 @@ static int start_cli(int socket_fd) {
             if (strlen(input) == 0)
                 continue; // ignore empty reads, go back to select
 
-            message.content.data = input;
             message.content.len = strnlen(input, MAX_MSG_LEN);
+            memcpy(message.content.data, input, message.content.len);
 
             if (send_message(socket_fd, &message) < 0) { // Send to server
                 printf("[Client] Failed to send, server may be down\n");
@@ -131,7 +131,6 @@ static int start_cli(int socket_fd) {
         case MESSAGE:
             if (m.type_data.message.type == SEND) {
                 printf("[ERROR] SEND message type received from server. Ignoring\n");
-                free(m.type_data.message.content.data);
                 continue;
             }
             break;
@@ -141,9 +140,6 @@ static int start_cli(int socket_fd) {
 
         printf(
             "[Client]: Recieved message from server: \"%s\"\n", m.type_data.message.content.data);
-
-        // Discard message after done
-        free(m.type_data.message.content.data);
     }
 
     return 0;

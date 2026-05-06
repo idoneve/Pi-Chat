@@ -55,6 +55,7 @@ typedef struct {
 typedef struct {
     List internal;
     size_t selected;
+    int server;
 } Connections;
 
 // Contains things necessary to create ui
@@ -74,7 +75,7 @@ Clay_RenderCommandArray get_layout(const AppResources* resources, AppModel* mode
 
 void update_app_state(AppState* state);
 
-void update_app_model(int socket_fd, AppModel* model);
+void update_app_model(AppModel* model);
 
 AppState initialize_app(Font* fonts);
 
@@ -89,6 +90,6 @@ void draw_app(Clay_RenderCommandArray render_commands, AppResources* resources);
 
 void HandleClayErrors(Clay_ErrorData);
 
-AppModel init_app_model(void);
+AppModel init_app_model(int fd);
 
 void deinit_app_model(AppModel*);

@@ -192,7 +192,7 @@ static int route_message(
     }
 
     if (destination == NULL) {
-        printf("[ERROR] Unkown destination address provided");
+        printf("[ERROR] Unkown destination address provided: %s", message->ip);
         return -1;
     }
 

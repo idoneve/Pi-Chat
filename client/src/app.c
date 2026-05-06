@@ -162,7 +162,11 @@ static void add_connection(Connections* connections, Connection connection) {
     append_list(&connections->internal, &connection);
 }
 
+//Returns null if selected > connections.len
 Connection* get_selected_connection(Connections connections) {
+    if (connections.internal.len == 0){
+        return NULL;
+    }
     return get_list(connections.internal, connections.selected);
 }
 

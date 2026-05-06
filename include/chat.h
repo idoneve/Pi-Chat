@@ -36,7 +36,7 @@
 typedef struct {
     // Message data
     struct {
-        char* data;
+        char data[MAX_MSG_LEN];
         size_t len;
     } content;
 

@@ -85,7 +85,44 @@ static size_t empty_buffer(char* data, size_t len) {
     return 0;
 }
 
-static void handle_text_input(Connection* selected) {
+static ClientMessage message_from_input(Connection* connection) {
+    ClientMessage c = (ClientMessage){
+        .content = {
+            .len = connection->user_input.len,
+        }, 
+        .type = SEND,
+    };
+
+    strncpy(c.content.data, connection->user_input.data, connection->user_input.len);
+    strncpy(c.ip, connection->dest, HEADER_ADDR_SIZE);
+    return c;
+}
+
+static int send_user_input(Connections connections) {
+    Connection* connection = get_selected_connection(connections);
+    if (connection == NULL) {
+        return -1;
+    }
+    ClientMessage message = message_from_input(connection);
+
+    append_list(&connection->messages.internal, &message);
+
+    if (send_message(connections.server,
+            get_list(connection->messages.internal, connection->messages.internal.len - 1))
+        < 0) {
+        return -1;
+    }
+    connection->user_input.len
+        = empty_buffer(connection->user_input.data, connection->user_input.len);
+    return 0;
+}
+
+static void handle_text_input(Connections connections) {
+    Connection* selected = get_selected_connection(connections);
+    if (selected == NULL) {
+        return;
+    }
+
     char* user_input = selected->user_input.data;
     size_t* input_len = &selected->user_input.len;
     size_t* cursor = &selected->user_input.cursor;
@@ -105,6 +142,8 @@ static void handle_text_input(Connection* selected) {
 
         case KEY_ENTER:
             // TODO - send user data
+
+            send_user_input(connections);
             *input_len = empty_buffer(user_input, *input_len);
             break;
 
@@ -145,11 +184,10 @@ static void message_entry(AppModel* model) {
         .border = {.width = CLAY_BORDER_OUTSIDE(5), .color = COLOR_LIGHT},
         .clip = {.vertical = true, .horizontal = false, .childOffset = Clay_GetScrollOffset()}
     }) {
-        if (model->connections.internal.len != 0) {
-            Connection* selected = get_selected_connection(model->connections);
+        handle_text_input(model->connections);
 
-            handle_text_input(selected);
-
+        Connection* selected = get_selected_connection(model->connections);
+        if (selected != NULL) {
             // TODO handle cursor rendering
             CLAY_TEXT(((Clay_String) {
                           .chars = selected->user_input.data,
@@ -186,12 +224,11 @@ static void submit_button(AppModel* model) {
         .cornerRadius = CLAY_CORNER_RADIUS(CORNER_RADIUS_CHAT_SUBMIT_BUTTON),
     }){
 
-            if (Clay_Hovered() && IsMouseButtonPressed(MOUSE_BUTTON_LEFT)
-                && model->connections.internal.len != 0) {
-                Connection* selected = get_selected_connection(model->connections);
-
-                // TODO send message
-                selected->user_input.len = 0;
+            Connection* selected = get_selected_connection(model->connections);
+            if (Clay_Hovered() && IsMouseButtonPressed(MOUSE_BUTTON_LEFT) && selected != NULL) {
+                if (send_user_input(model->connections) < 0) {
+                    printf("\t[CLIENT] [UI] Failed to send user input\n");
+                }
             }
 
             CLAY_TEXT(CLAY_STRING("Send"),
@@ -222,9 +259,8 @@ void chat_window(AppModel* model) {
                 .layoutDirection = CLAY_TOP_TO_BOTTOM,
                 .childAlignment = { .y = CLAY_ALIGN_Y_TOP } } }) {
 
-            if (model->connections.internal.len != 0) {
-                Connection* active_connection = get_selected_connection(model->connections);
-
+            Connection* active_connection = get_selected_connection(model->connections);
+            if (active_connection != NULL) {
                 for (size_t i = 0; i < active_connection->messages.internal.len; i++) {
                     ClientMessage* m = get_list(active_connection->messages.internal, i);
                     chat_message(i, m);
