@@ -102,6 +102,7 @@ static ssize_t pack_message(const ClientMessage* message, char* out_buf, size_t 
 
 // Send a length-prefixed message
 ssize_t send_message(int fd, const ClientMessage* message) {
+    printf("\t[DEBUG] sending message %s\n", message->content.data);
     char packet[MAX_MSG_LEN + HEADER_SIZE];
     ssize_t total = pack_message(message, packet, sizeof(packet));
     if (total < 0)
@@ -182,6 +183,7 @@ static ssize_t unpack_message(int fd, char buffer[HEADER_SIZE + MAX_MSG_LEN]) {
         total += n;
     }
     msg_data[msg_len] = '\0';
+    printf("[DEBUG] message received %s\n", msg_data);
 
     return msg_len;
 }

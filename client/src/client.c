@@ -96,7 +96,7 @@ static int start_cli(int socket_fd) {
             }
             input[strcspn(input, "\n")] = '\0'; // Add terminator
                                                 //
-            printf("[CLIENT] Input received messsage %s\n", message.ip);
+            printf("[CLIENT] Input received messsage %s\n", input);
 
             if (strlen(input) == 0)
                 continue; // ignore empty reads, go back to select
