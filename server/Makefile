@@ -43,7 +43,7 @@ LOCAL_INCLUDE = ./include/
 
 all: $(SHARED_LIBRARY) $(SERVER_TARGET) clean
 
-bin/server:$(SHARED_LIBRARY) $(SERVER_SRC) | bin lib
+bin/server:$(SHARED_LIBRARY) $(SERVER_SRC) | bin
 	$(CC) $(CFLAGS) $(SERVER_SRC) $(SHARED_LIBRARY) -I$(LOCAL_INCLUDE) -I$(SHARED_INCLUDE) -o $@ 
 
 bin:
@@ -52,7 +52,7 @@ bin:
 lib:
 	mkdir -p lib 
 
-$(SHARED_LIBRARY): $(SHARED_SRC)
+$(SHARED_LIBRARY): $(SHARED_SRC) | lib 
 	$(CC) $(CFLAGS) -c $< -o $@ -I $(SHARED_INCLUDE)
 
 run_server: $(SERVER_TARGET)
