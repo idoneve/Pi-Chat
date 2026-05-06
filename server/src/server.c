@@ -197,7 +197,7 @@ static int route_message(
     }
 
     // set destination to source
-    memcpy(message->ip, destination->ip, sizeof(message->ip));
+    memcpy(message->ip, source->ip, sizeof(message->ip));
 
     // Broadcast message to routed client
     if (send_message(destination->fd, message) < 0) {

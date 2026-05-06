@@ -187,6 +187,7 @@ static Connection* map_message_to_connection(AppModel* model, ClientMessage* mes
                 .internal = init_list(sizeof(ClientMessage), 5),
             }, 
             .is_active = true, .user_input = {.len = 0, .cursor = 0}};
+        memcpy(new_connection.dest, message_source, sizeof(new_connection.dest));
 
         add_connection(&model->connections, new_connection);
         match = get_list(model->connections.internal, model->connections.internal.len - 1);
