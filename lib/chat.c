@@ -211,6 +211,7 @@ Message receive_message(int fd) {
         memcpy(message->ip, buffer + HEADER_TYPE_SIZE, HEADER_ADDR_SIZE);
         // Copy message content into message
         message->content.data = malloc((size_t)len);
+        message->content.len = (size_t)len;
         memcpy(message->content.data, buffer + HEADER_TYPE_SIZE + HEADER_ADDR_SIZE, (size_t)len);
 
         return result;
