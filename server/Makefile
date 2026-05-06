@@ -49,7 +49,10 @@ bin/server:$(SHARED_LIBRARY) $(SERVER_SRC) | bin
 bin:
 	mkdir -p bin
 
-$(SHARED_LIBRARY): $(SHARED_SRC)
+lib:
+	mkdir -p lib
+
+$(SHARED_LIBRARY): $(SHARED_SRC) | lib
 	$(CC) $(CFLAGS) -c $< -o $@ -I $(SHARED_INCLUDE)
 
 run_server: $(SERVER_TARGET)
