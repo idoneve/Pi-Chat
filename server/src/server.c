@@ -205,7 +205,8 @@ static void check_for_messages(Connections* connections, fd_set* read_fds) {
             continue;
         }
 
-        printf("\t[Server] The message of size %zd has been broadcasted\n",
+        printf("\t[Server] The message %s of size %zd has been broadcasted\n",
+                client_message->content.data,
             client_message->content.len);
     }
 }
