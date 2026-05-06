@@ -103,6 +103,11 @@ static int send_user_input(Connections connections) {
     if (connection == NULL) {
         return -1;
     }
+
+    if (connection->user_input.len == 0) {
+        return 0;
+    }
+
     ClientMessage message = message_from_input(connection);
 
     append_list(&connection->messages.internal, &message);
@@ -197,7 +202,6 @@ static void message_entry(AppModel* model) {
                 CLAY_TEXT_CONFIG({
                     .textAlignment = CLAY_TEXT_ALIGN_LEFT,
                     .textColor = COLOR_CHAT_USER_INPUT_TEXT,
-                    .wrapMode = CLAY_TEXT_WRAP_WORDS,
                     .fontId = ID_CHAT_USER_INPUT_FONT,
                     .fontSize = SIZE_CHAT_USER_INPUT_FONT,
                     .letterSpacing = SPACING_CHAT_USER_INPUT_FONT,
@@ -322,15 +326,14 @@ static void connection_tab(size_t* selected, const TabModel* model) {
 }
 
 void side_bar(AppModel* model) {
-    CLAY({ .id = CLAY_ID("SideBar"),
+    CLAY({
+        .id = CLAY_ID("SideBar"),
         .layout = { .layoutDirection = CLAY_TOP_TO_BOTTOM,
             .sizing = { .width = CLAY_SIZING_PERCENT(0.25), .height = CLAY_SIZING_GROW(0) },
             .padding = CLAY_PADDING_ALL(PADDING_SIDEBAR_OUTER),
-            .childGap = GAP_SIDEBAR_INNER },
+            .childGap = GAP_SIDEBAR_OUTER },
         .backgroundColor = COLOR_SIDEBAR_BACKGROUND,
-
-        // Enable Scrolling
-        .clip = { .vertical = true, .childOffset = Clay_GetScrollOffset() } }) {
+    }) {
 
         CLAY({ .id = CLAY_ID("Title"),
             .layout = { .sizing = { .width = CLAY_SIZING_GROW(0) },
@@ -345,9 +348,46 @@ void side_bar(AppModel* model) {
                     .textColor = COLOR_SIDEBAR_TITLE_TEXT }));
         }
 
-        // Standard C code like loops etc work inside components
-        for (size_t i = 0; i < model->tabs.len; i++) {
-            connection_tab(&model->connections.selected, &model->tabs.data[i]);
+        CLAY({ .id = CLAY_ID("Tabs"),
+            .layout = { .layoutDirection = CLAY_TOP_TO_BOTTOM,
+                .childAlignment = { .x = CLAY_ALIGN_X_CENTER, .y = CLAY_ALIGN_Y_TOP },
+                .padding = CLAY_PADDING_ALL(PADDING_SIDEBAR_INNER),
+                .sizing = {
+                    .width = CLAY_SIZING_GROW(0),
+                    .height = CLAY_SIZING_GROW(0),
+                },
+            },
+            .clip = { .vertical = true, .childOffset = Clay_GetScrollOffset() } ,
+            .border = {
+                .width = CLAY_BORDER_OUTSIDE(WIDTH_SIDEBAR_TABS_BORDER), 
+                .color = COLOR_SIDEBAR_TABS_BORDER}}) {
+
+            for (size_t i = 0; i < model->tabs.len; i++) {
+                connection_tab(&model->connections.selected, &model->tabs.data[i]);
+            }
         }
+
+        CLAY({ .id = CLAY_ID("AddButton"),
+            .cornerRadius = CLAY_CORNER_RADIUS(CORNER_RADIUS_ADD_BUTTON),
+            .layout = { 
+                .sizing = {
+                    .width = CLAY_SIZING_GROW(0),
+                    .height = CLAY_SIZING_PERCENT(0.05F),
+                },
+                .childAlignment = {.x = CLAY_ALIGN_X_CENTER, .y  = CLAY_ALIGN_Y_CENTER}
+            },
+            .backgroundColor = COLOR_SIDEBAR_ADD_BUTTON}) {
+            if (Clay_Hovered() && IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) { 
+            }
+
+            CLAY_TEXT(CLAY_STRING("Add Connection"),
+                CLAY_TEXT_CONFIG({
+                    .textColor = COLOR_SIDEBAR_ADD_BUTTON_TEXT,
+                    .textAlignment = CLAY_TEXT_ALIGN_CENTER,
+                    .fontSize = SIZE_SIDEBAR_ADD_BUTTON_FONT,
+                }));
+        }
+
+        // Standard C code like loops etc work inside components
     }
 }
