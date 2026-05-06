@@ -17,7 +17,7 @@ int start_ui_app(int socket_fd) {
     AppResources* resources = load_resources();
 
     printf("[CLIENT] Initializing App Model\n");
-    AppModel model = init_app_model();
+    AppModel model = init_app_model(socket_fd);
 
     bool enable_debug_mode = false;
 
@@ -34,7 +34,10 @@ int start_ui_app(int socket_fd) {
         }
 
         update_app_state(&state);
-        update_app_model(socket_fd, &model);
+        update_app_model(&model);
+        if (model.connections.server == -1) {
+            break;
+        }
         Clay_RenderCommandArray render_commands = get_layout(resources, &model);
         draw_app(render_commands, resources);
     }
