@@ -8,7 +8,6 @@
 #include <app.h>
 #include <clay_renderer_raylib.c>
 #include <sys/ioctl.h>
-#include <threads.h>
 #include "chat.h"
 #include "raylib.h"
 #include "ui_models.h"
