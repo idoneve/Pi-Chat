@@ -8,6 +8,7 @@
 #include <app.h>
 #include <clay_renderer_raylib.c>
 #include <sys/ioctl.h>
+#include <threads.h>
 #include "chat.h"
 #include "raylib.h"
 #include "ui_models.h"
@@ -142,16 +143,26 @@ static Messages listen_for_messages(int socket_fd) {
 }
 
 static Connections init_connections(void) {
-    return (Connections) { .internal = init_list(sizeof(Connection), 1) };
+    return (Connections) { .internal = init_list(sizeof(Connection), 0) };
 }
 
-static void deinit_connections(Connections connections) { deinit_list(&connections.internal); }
+static void deinit_connections(Connections* connections) {
+    for (size_t i = 0; i < connections->internal.len; i++) {
+        Connection* c = get_list(connections->internal, i);
+        for (size_t j = 0; j < connections->internal.len; j++) {
+            ClientMessage* m = get_list(connections->internal, j);
+            free(m->content.data);
+        }
+    }
 
-static void add_connection(Connections connections, Connection connection) {
-    append_list(&connections.internal, &connection);
+    deinit_list(&connections->internal);
 }
 
-Connection* get_selected_connection(Connections connections){
+static void add_connection(Connections* connections, Connection connection) {
+    append_list(&connections->internal, &connection);
+}
+
+Connection* get_selected_connection(Connections connections) {
     return get_list(connections.internal, connections.selected);
 }
 
@@ -177,7 +188,8 @@ static Connection* map_message_to_connection(AppModel* model, ClientMessage* mes
             }, 
             .is_active = true, .user_input = {.len = 0, .cursor = 0}};
 
-        add_connection(model->connections, new_connection);
+        add_connection(&model->connections, new_connection);
+        match = get_list(model->connections.internal, model->connections.internal.len - 1);
     }
 
     return match;
@@ -187,7 +199,7 @@ static void add_message_to_connection(Connection* connection, ClientMessage* mes
     append_list(&connection->messages.internal, message);
 }
 
-static void update_connections(int socket_fd, AppModel* model) {
+static int update_connections(int socket_fd, AppModel* model) {
     Messages incoming;
     while ((incoming = listen_for_messages(socket_fd)).internal.len != 0) {
         ClientMessage* client_message = NULL;
@@ -202,19 +214,28 @@ static void update_connections(int socket_fd, AppModel* model) {
                 add_message_to_connection(connection, client_message);
                 break;
             case INVALID:
-                printf("[ERROR] Client receieved invalid message from server");
+                printf("[ERROR] Client receieved invalid message from server\n");
                 continue;
             case DISCONNECT:
-                printf("[CLIENT] Server disconnect message receieved");
+                printf("[CLIENT] Server disconnect message receieved\n");
+                return 1;
                 break;
             }
         }
     }
+    return 0;
 }
 
 void update_app_model(int socket_fd, AppModel* model) {
-    update_connections(socket_fd, model);
+    if (update_connections(socket_fd, model) < 0) {
+        // TODO process server disconnecct
+        exit(1);
+        return;
+    };
+
+    printf("\t[CLIENT] connections updated\n");
     if (model->connections.internal.len != model->tabs.len) {
+        printf("\t[CLIENT] [UI] generating tabs\n");
         if (model->connections.internal.len == 0)
             return;
 
@@ -225,7 +246,7 @@ void update_app_model(int socket_fd, AppModel* model) {
         model->tabs.data = malloc(sizeof(TabModel) * model->tabs.len);
 
         if (model->tabs.data == NULL) {
-            printf("[CLIENT] [UI] [ERROR] - Failed to allocate tabs data");
+            printf("\t[CLIENT] [UI] [ERROR] - Failed to allocate tabs data\n");
             exit(1);
         }
     }
