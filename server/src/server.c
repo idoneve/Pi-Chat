@@ -14,27 +14,27 @@ typedef struct {
     char ip[INET_ADDRSTRLEN];
     int fd;
     bool active;
-} ServerConnection;
+} Connection;
 
 typedef struct {
     List internal;
-} ServerConnections;
+} Connections;
 
-static ServerConnections init_connections(void) {
-    return (ServerConnections) { .internal = init_list(sizeof(ServerConnection), MAX_CONNECTIONS) };
+static Connections init_connections(void) {
+    return (Connections) { .internal = init_list(sizeof(Connection), MAX_CONNECTIONS) };
 }
 
-static void deinit_connections(ServerConnections* connections) {
+static void deinit_connections(Connections* connections) {
     deinit_list(&connections->internal);
 }
 
-static void add_connection(ServerConnections* connections, ServerConnection connection) {
+static void add_connection(Connections* connections, Connection connection) {
     append_list(&connections->internal, &connection);
 }
 
-static bool reactivate_connection(ServerConnections* connections, ServerConnection incoming) {
+static bool reactivate_connection(Connections* connections, Connection incoming) {
     for (size_t i = 0; i < connections->internal.len; i++) {
-        ServerConnection* existing = get_list(connections->internal, i);
+        Connection* existing = get_list(connections->internal, i);
 
         if (existing->active)
             continue;
@@ -103,14 +103,14 @@ static int accept_client(int server_fd) {
     }
 }
 
-static int load_connections(int server_fd, ServerConnections* connections, fd_set* read_fds) {
+static int load_connections(int server_fd, Connections* connections, fd_set* read_fds) {
 
     FD_ZERO(read_fds);
 
     FD_SET(server_fd, read_fds); // Load server into reader
     int max_fd = server_fd;
     for (size_t i = 0; i < connections->internal.len; ++i) {
-        ServerConnection* connection = get_list(connections->internal, i);
+        Connection* connection = get_list(connections->internal, i);
         if (!connection->active)
             continue;
 
@@ -145,7 +145,7 @@ typedef enum {
 } AcceptError;
 
 // Returns size of active conenctions or an AcceptError
-static AcceptError accept_clients(int server_fd, ServerConnections* connections, fd_set* read_fds) {
+static AcceptError accept_clients(int server_fd, Connections* connections, fd_set* read_fds) {
 
     if (!FD_ISSET(server_fd, read_fds))
         return NONE;
@@ -155,7 +155,7 @@ static AcceptError accept_clients(int server_fd, ServerConnections* connections,
         return ACCEPT_ERROR;
     } else {
 
-        ServerConnection c = (ServerConnection) {
+        Connection c = (Connection) {
             .fd = client_fd,
             .active = true,
         };
@@ -175,16 +175,16 @@ static AcceptError accept_clients(int server_fd, ServerConnections* connections,
 }
 
 static int route_message(
-    const ServerConnection* source, const ServerConnections* connections, ClientMessage* message) {
+    const Connection* source, const Connections* connections, ClientMessage* message) {
 
     if (message->type == SEND) {
         printf("[ERROR] Send message given to router");
         return -1;
     }
 
-    ServerConnection* destination = NULL;
+    Connection* destination = NULL;
     for (size_t i = 0; i < connections->internal.len; i++) {
-        ServerConnection* connection = get_list(connections->internal, i);
+        Connection* connection = get_list(connections->internal, i);
         if (strncmp(message->ip, connection->ip, INET_ADDRSTRLEN) == 0) {
             destination = connection;
             break;
@@ -210,14 +210,14 @@ static int route_message(
     return 0;
 }
 
-static void check_for_messages(ServerConnections* connections, fd_set* read_fds) {
+static void check_for_messages(Connections* connections, fd_set* read_fds) {
     for (size_t i = 0; i < connections->internal.len; ++i) {
-        ServerConnection* connection = get_list(connections->internal, i);
+        Connection* connection = get_list(connections->internal, i);
         if (!connection->active)
             continue;
 
         if (!FD_ISSET(connection->fd, read_fds))
-            // ServerConnection has no new messages
+            // Connection has no new messages
             continue;
 
         printf("\t[Server] Client (fd %d) is sending a signal...\n", connection->fd);
@@ -252,7 +252,7 @@ static void check_for_messages(ServerConnections* connections, fd_set* read_fds)
 }
 
 int main(void) {
-    ServerConnections connections = init_connections();
+    Connections connections = init_connections();
 
     printf("[Server] Starting up server...\n");
     setup_signal_handler();
