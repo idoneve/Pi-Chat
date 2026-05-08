@@ -214,6 +214,12 @@ static ssize_t unpack_message(int fd, char buffer[MESSAGE_HEADER_SIZE + MAX_MSG_
 
     // ACTIVITY MESSAGE RECEIVED
     if (buffer[0] == ACTIVITY) {
+        n = recv_all(fd, buffer + HEADER_ADDR_SIZE + HEADER_TYPE_SIZE, HEADER_STATUS_SIZE);
+
+        if (n < (ssize_t)HEADER_STATUS_SIZE) {
+            return n;
+        }
+
         return ACTIVITY;
     }
 
