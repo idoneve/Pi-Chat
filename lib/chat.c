@@ -163,6 +163,24 @@ bool send_activity(int fd, const ActivityMessage* message) {
     return true; // Payload bytes sent
 }
 
+static ssize_t recv_all(int fd, char* buf, size_t len) {
+    size_t total = 0;
+
+    while (total < len) {
+        ssize_t n = recv(fd, buf + total, len - total, 0);
+
+        if (n == 0)
+            return 0; // disconnect
+
+        if (n < 0)
+            return -1; // error
+
+        total += (size_t)n;
+    }
+
+    return (ssize_t)total;
+}
+
 // Returns message type if disconnected or invalid or length of message content
 static ssize_t unpack_message(int fd, char buffer[MESSAGE_HEADER_SIZE + MAX_MSG_LEN]) {
     printf("\t[DEBUG] Beginning unpack\n");
@@ -170,7 +188,7 @@ static ssize_t unpack_message(int fd, char buffer[MESSAGE_HEADER_SIZE + MAX_MSG_
 
     ssize_t n;
 
-    n = recv(fd, buffer, HEADER_TYPE_SIZE, 0);
+    n = recv_all(fd, buffer, HEADER_TYPE_SIZE);
     if (n == DISCONNECT) {
         return DISCONNECT;
     } else if (n < 0) {
@@ -180,7 +198,7 @@ static ssize_t unpack_message(int fd, char buffer[MESSAGE_HEADER_SIZE + MAX_MSG_
 
     printf("[DEBUG] Received valid message\n");
 
-    n = recv(fd, buffer + HEADER_TYPE_SIZE, HEADER_ADDR_SIZE, 0);
+    n = recv_all(fd, buffer + HEADER_TYPE_SIZE, HEADER_ADDR_SIZE);
     if (n == 0) {
         return DISCONNECT;
     } else if (n < 0) {
@@ -203,7 +221,7 @@ static ssize_t unpack_message(int fd, char buffer[MESSAGE_HEADER_SIZE + MAX_MSG_
 
     // Read 4-byte length header
     uint32_t net_len;
-    n = recv(fd, &net_len, HEADER_LEN_SIZE, 0);
+    n = recv_all(fd, (char*)&net_len, HEADER_LEN_SIZE);
     if (n == 0) {
         return DISCONNECT;
     } else if (n < 0) {
@@ -221,19 +239,13 @@ static ssize_t unpack_message(int fd, char buffer[MESSAGE_HEADER_SIZE + MAX_MSG_
 
     char* msg_data = (buffer + MESSAGE_HEADER_SIZE);
 
-    // Read the actual message
-    ssize_t total = 0;
-    while (total < msg_len) {
-        n = recv(fd, msg_data + total, (size_t)(msg_len - total), 0);
-        if (n == 0) {
-            return DISCONNECT;
-        } else if (n < 0) {
-            return INVALID;
-        }
-        total += n;
+    n = recv_all(fd, msg_data, MAX_MSG_LEN);
+    if (n == 0) {
+        return DISCONNECT;
+    } else if (n < 0) {
+        return INVALID;
     }
     msg_data[msg_len] = '\0';
-    printf("[DEBUG] message received %s\n", msg_data);
 
     printf("[DEBUG] message data %s received\n", msg_data);
 
