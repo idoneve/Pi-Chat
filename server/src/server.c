@@ -122,9 +122,10 @@ static int load_connections(int server_fd, Connections* connections, fd_set* rea
 
 // Broadcast connection status updates to all clients
 static void notify_clients(const Connections* connections) {
-    for (size_t i = 0; i < connections->internal.len; i++) { 
+    printf("\t[Server] Notify Clients\n");
+    for (size_t i = 0; i < connections->internal.len; i++) {
         Connection* c1 = get_list(connections->internal, i);
-        for (size_t j = i; i != j; j = (j + 1) % connections->internal.len) { 
+        for (size_t j = i; i != j; j = (j + 1) % connections->internal.len) {
             Connection* c2 = get_list(connections->internal, j);
 
             ActivityMessage activity = {
