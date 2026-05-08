@@ -171,7 +171,8 @@ static AcceptError accept_clients(int server_fd, Connections* connections, fd_se
         }
         notify_clients(connections);
 
-        printf("\t[Server] Client connection accepted (fd %d: ip %s)\n", client_fd, c.ip);
+        printf("\t[Server] Client connection accepted (fd %d: ip %s). Total Connections: %d\n",
+            client_fd, c.ip, connections->internal.len);
         return NONE;
     }
 }

@@ -136,6 +136,7 @@ static Messages listen_for_messages(int socket_fd) {
 
     int bytes_avaliable;
     while (ioctl(socket_fd, FIONREAD, &bytes_avaliable) == 0 && bytes_avaliable != 0) {
+        printf("\t[CLIENT] New Message On Socket\n");
         Message m = receive_message(socket_fd);
         append_list(&result.internal, &m);
     }
@@ -219,16 +220,16 @@ static bool update_connection_activity(AppModel* model, const ActivityMessage* a
 }
 
 static int update_connections(AppModel* model) {
+    printf("\t[CLIENT]Updating connections\n");
     Messages incoming;
     while ((incoming = listen_for_messages(model->connections.server)).internal.len != 0) {
-        ClientMessage* client_message = NULL;
-
         for (size_t i = 0; i < incoming.internal.len; i++) {
             Message* message = get_list(incoming.internal, i);
 
             switch (message->type) {
             case ACTIVITY:
                 printf("\t[CLIENT] activity message received\n");
+
                 ActivityMessage* activity = &message->type_data.activity;
                 if (!update_connection_activity(model, activity)) {
                     printf("\t[CLIENT] new activity; adding connection to %s \n", activity->ip);
@@ -241,10 +242,11 @@ static int update_connections(AppModel* model) {
 
                     add_connection(&model->connections, c);
                 }
+
                 printf("\t[CLIENT] Activity updated\n");
                 break;
             case MESSAGE:
-                client_message = &message->type_data.message;
+                ClientMessage* client_message = &message->type_data.message;
                 Connection* connection = map_message_to_connection(model, client_message);
                 add_message_to_connection(connection, client_message);
                 break;

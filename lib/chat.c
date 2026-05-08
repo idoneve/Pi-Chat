@@ -148,7 +148,7 @@ ssize_t send_message(int fd, const ClientMessage* message) {
 }
 
 bool send_activity(int fd, const ActivityMessage* message) {
-    printf("\t[DEBUG] sending activity %s\n", message->ip);
+    printf("\t[DEBUG] sending activity ip: %s to fd: %d\n", message->ip, fd);
     char packet[ACTIVITY_SIZE];
     pack_activity(message, packet);
 
@@ -171,14 +171,14 @@ static ssize_t unpack_message(int fd, char buffer[MESSAGE_HEADER_SIZE + MAX_MSG_
     ssize_t n;
 
     n = recv(fd, buffer, HEADER_TYPE_SIZE, 0);
-    if (n == 0) {
+    if (n == DISCONNECT) {
         return DISCONNECT;
     } else if (n < 0) {
         printf("[DEBUG] Invalid type received\n");
         return INVALID;
     }
 
-    printf("[DEBUG] Received regular message\n");
+    printf("[DEBUG] Received valid message\n");
 
     n = recv(fd, buffer + HEADER_TYPE_SIZE, HEADER_ADDR_SIZE, 0);
     if (n == 0) {
@@ -248,7 +248,6 @@ Message receive_message(int fd) {
         return (Message) { .type = INVALID };
     case DISCONNECT:
         return (Message) { .type = DISCONNECT };
-    case ACTIVITY:
     default:
         break;
     }
@@ -259,6 +258,7 @@ Message receive_message(int fd) {
 
     switch (result.type) {
     case ACTIVITY:
+        printf("\t[DEBUG] Unpacked Activity Message\n");
         ActivityMessage activity = {
             .active = *((bool*)(buffer + (ACTIVITY_SIZE - HEADER_STATUS_SIZE))),
         };
@@ -271,6 +271,7 @@ Message receive_message(int fd) {
 
         return m;
     case MESSAGE:
+        printf("\t[DEBUG] Unpacked regular Message\n");
         Message regular_message = { .type = MESSAGE };
         ClientMessage* message = &regular_message.type_data.message;
         message->type = RECEIVE;
