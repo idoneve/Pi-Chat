@@ -128,12 +128,15 @@ static void handle_text_input(Connections connections) {
         return;
     }
 
+    const char* inactive_msg = "Connection Disconnected Input No Longer Allowed";
+    size_t len = strlen(inactive_msg);
     if (!selected->is_active) {
-        const char* msg = "Connection Disconnected Input No Longer Allowed";
-        size_t len = strlen(msg);
-        memcpy(selected->user_input.data, msg, len);
-
+        memcpy(selected->user_input.data, inactive_msg, len);
+        selected->user_input.len = len;
         return;
+    } else if (strcmp(inactive_msg, selected->user_input.data) == 0) {
+        selected->user_input.data[0] = '\0';
+        selected->user_input.len = 0;
     }
 
     char* user_input = selected->user_input.data;
@@ -385,8 +388,7 @@ void side_bar(AppModel* model) {
                 .childAlignment = {.x = CLAY_ALIGN_X_CENTER, .y  = CLAY_ALIGN_Y_CENTER}
             },
             .backgroundColor = COLOR_SIDEBAR_ADD_BUTTON}) {
-            if (Clay_Hovered() && IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) { 
-            }
+            if (Clay_Hovered() && IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) { }
 
             CLAY_TEXT(CLAY_STRING("Add Connection"),
                 CLAY_TEXT_CONFIG({
