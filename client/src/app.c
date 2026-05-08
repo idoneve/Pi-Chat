@@ -147,14 +147,6 @@ static Connections init_connections(int server) {
 }
 
 static void deinit_connections(Connections* connections) {
-    for (size_t i = 0; i < connections->internal.len; i++) {
-        Connection* c = get_list(connections->internal, i);
-        for (size_t j = 0; j < c->messages.internal.len; j++) {
-            ClientMessage* m = get_list(c->messages.internal, j);
-            free(m->content.data);
-        }
-    }
-
     deinit_list(&connections->internal);
 }
 
