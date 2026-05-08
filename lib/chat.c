@@ -245,11 +245,15 @@ static ssize_t unpack_message(int fd, char buffer[MESSAGE_HEADER_SIZE + MAX_MSG_
 
     char* msg_data = (buffer + MESSAGE_HEADER_SIZE);
 
-    n = recv_all(fd, msg_data, MAX_MSG_LEN);
-    if (n == 0) {
-        return DISCONNECT;
-    } else if (n < 0) {
-        return INVALID;
+    ssize_t total = 0;
+    while (total < msg_len) {
+        n = recv(fd, msg_data + total, (size_t)(msg_len - total), 0);
+        if (n == 0) {
+            return DISCONNECT;
+        } else if (n < 0) {
+            return INVALID;
+        }
+        total += n;
     }
     msg_data[msg_len] = '\0';
 
