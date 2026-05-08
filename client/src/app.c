@@ -105,9 +105,7 @@ Clay_RenderCommandArray get_layout(const AppResources*, AppModel* model) {
     Clay_BeginLayout();
 
     CLAY({ .id = CLAY_ID("OuterContainer"),
-        .layout = { .sizing = { CLAY_SIZING_GROW(0), CLAY_SIZING_GROW(0) },
-            .padding = CLAY_PADDING_ALL(16),
-            .childGap = 16 },
+        .layout = { .sizing = { CLAY_SIZING_GROW(0), CLAY_SIZING_GROW(0) }, .childGap = 16 },
         .backgroundColor = { 250, 250, 255, 255 } }) {
 
         side_bar(model);
@@ -220,7 +218,6 @@ static bool update_connection_activity(AppModel* model, const ActivityMessage* a
 }
 
 static int update_connections(AppModel* model) {
-    printf("\t[CLIENT]Updating connections\n");
     Messages incoming;
     while ((incoming = listen_for_messages(model->connections.server)).internal.len != 0) {
         for (size_t i = 0; i < incoming.internal.len; i++) {
