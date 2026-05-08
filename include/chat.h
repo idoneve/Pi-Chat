@@ -53,7 +53,7 @@ typedef struct {
     bool active;
 } ActivityMessage;
 
-typedef enum { ACTIVITY = 2, MESSAGE = 1, INVALID = -1, DISCONNECT = 0 } MessageType;
+typedef enum { ACTIVITY = -2, MESSAGE = 1, INVALID = -1, DISCONNECT = 0 } MessageType;
 
 typedef struct {
     MessageType type;

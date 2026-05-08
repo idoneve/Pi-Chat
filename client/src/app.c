@@ -228,9 +228,10 @@ static int update_connections(AppModel* model) {
 
             switch (message->type) {
             case ACTIVITY:
+                printf("\t[CLIENT] activity message received\n");
                 ActivityMessage* activity = &message->type_data.activity;
                 if (!update_connection_activity(model, activity)) {
-
+                    printf("\t[CLIENT] new activity; adding connection to %s \n", activity->ip);
                     Connection c = {
                         .is_active = activity->active,
                         .messages = init_list(sizeof(Message), 0),
@@ -240,6 +241,7 @@ static int update_connections(AppModel* model) {
 
                     add_connection(&model->connections, c);
                 }
+                printf("\t[CLIENT] Activity updated\n");
                 break;
             case MESSAGE:
                 client_message = &message->type_data.message;
@@ -267,7 +269,6 @@ void update_app_model(AppModel* model) {
         return;
     };
 
-    printf("\t[CLIENT] connections updated\n");
     if (model->connections.internal.len != model->tabs.len) {
         printf("\t[CLIENT] [UI] generating tabs\n");
         if (model->connections.internal.len == 0)

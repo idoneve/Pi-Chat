@@ -124,9 +124,9 @@ static ssize_t pack_message(
 
 static void pack_activity(const ActivityMessage* message, char out_buf[ACTIVITY_SIZE]) {
 
-    out_buf[0] = ACTIVITY;
-    memcpy(out_buf + HEADER_TYPE_SIZE, message->ip, HEADER_ADDR_SIZE);
-    memcpy(out_buf + HEADER_TYPE_SIZE + HEADER_ADDR_SIZE, &message->active, sizeof(bool));
+    out_buf[0] = ACTIVITY; // TYPE
+    memcpy(out_buf + HEADER_TYPE_SIZE, message->ip, HEADER_ADDR_SIZE); // ADDR
+    memcpy(out_buf + HEADER_TYPE_SIZE + HEADER_ADDR_SIZE, &message->active, sizeof(bool)); // Active
 }
 
 // Send a length-prefixed message
@@ -194,6 +194,11 @@ static ssize_t unpack_message(int fd, char buffer[MESSAGE_HEADER_SIZE + MAX_MSG_
         return INVALID;
     }
 
+    // ACTIVITY MESSAGE RECEIVED
+    if (buffer[0] == ACTIVITY) {
+        return ACTIVITY;
+    }
+
     printf("[DEBUG] destination address %s received\n", buffer + HEADER_TYPE_SIZE);
 
     // Read 4-byte length header
@@ -243,9 +248,21 @@ Message receive_message(int fd) {
         return (Message) { .type = INVALID };
     case DISCONNECT:
         return (Message) { .type = DISCONNECT };
+    case ACTIVITY:
+        ActivityMessage activity = {
+            .active = *((bool*)(buffer + (ACTIVITY_SIZE - HEADER_STATUS_SIZE))),
+        };
+        memcpy(activity.ip, buffer + HEADER_TYPE_SIZE, HEADER_ADDR_SIZE);
+
+        Message m = {
+            .type = ACTIVITY,
+            .type_data = { .activity = activity, },
+        };
+
+        return m;
     default:
-        Message result = { .type = MESSAGE };
-        ClientMessage* message = &result.type_data.message;
+        Message regular_message = { .type = MESSAGE };
+        ClientMessage* message = &regular_message.type_data.message;
         message->type = RECEIVE;
 
         // Copy address into message
@@ -254,6 +271,6 @@ Message receive_message(int fd) {
         message->content.len = (size_t)len;
         memcpy(message->content.data, buffer + MESSAGE_HEADER_SIZE, (size_t)len);
 
-        return result;
+        return regular_message;
     }
 }

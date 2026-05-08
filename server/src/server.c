@@ -126,11 +126,12 @@ static void notify_clients(const Connections* connections) {
         Connection* c1 = get_list(connections->internal, i);
         for (size_t j = i; i != j; j = (j + 1) % connections->internal.len) { 
             Connection* c2 = get_list(connections->internal, j);
+
             ActivityMessage activity = {
                 .active = c2->active,
             };
-
             memcpy(activity.ip, c2->ip, HEADER_ADDR_SIZE);
+
             send_activity(c1->fd, &activity);
         }
     }
@@ -165,8 +166,8 @@ static AcceptError accept_clients(int server_fd, Connections* connections, fd_se
 
         if (!reactivate_connection(connections, c)) {
             add_connection(connections, c);
-            notify_clients(connections);
         }
+        notify_clients(connections);
 
         printf("\t[Server] Client connection accepted (fd %d: ip %s)\n", client_fd, c.ip);
         return NONE;
