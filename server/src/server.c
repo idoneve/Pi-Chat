@@ -125,7 +125,8 @@ static void notify_clients(const Connections* connections) {
     printf("\t[Server] Notify Clients\n");
     for (size_t i = 0; i < connections->internal.len; i++) {
         Connection* c1 = get_list(connections->internal, i);
-        for (size_t j = i; i != j; j = (j + 1) % connections->internal.len) {
+        for (size_t j = (i + 1) % connections->internal.len; i != j;
+            j = (j + 1) % connections->internal.len) {
             Connection* c2 = get_list(connections->internal, j);
 
             ActivityMessage activity = {
