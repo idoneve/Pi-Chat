@@ -134,6 +134,11 @@ static int start_cli(int socket_fd) {
                 continue;
             }
             break;
+        case ACTIVITY:
+            printf("\t[Client] Activity message received.\n\t\tIP: %s\n\t\tActive:%b\n",
+                m.type_data.activity.ip, m.type_data.activity.active);
+
+            continue;
         default:
             break;
         }
