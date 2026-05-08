@@ -128,6 +128,14 @@ static void handle_text_input(Connections connections) {
         return;
     }
 
+    if (!selected->is_active) {
+        const char* msg = "Connection Disconnected Input No Longer Allowed";
+        size_t len = strlen(msg);
+        memcpy(selected->user_input.data, msg, len);
+
+        return;
+    }
+
     char* user_input = selected->user_input.data;
     size_t* input_len = &selected->user_input.len;
     size_t* cursor = &selected->user_input.cursor;
