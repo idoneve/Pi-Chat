@@ -308,11 +308,6 @@ AppModel init_app_model(int fd) {
 }
 
 void deinit_app_model(AppModel* model) {
-    for (size_t i = 0; i < model->connections.internal.len; i++) {
-        Connection* connection = get_list(model->connections.internal, i);
-        deinit_list(&connection->messages.internal);
-    }
-
     deinit_connections(&model->connections);
     free(model->tabs.data);
 }
