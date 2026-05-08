@@ -8,6 +8,7 @@
 #include <app.h>
 #include <clay_renderer_raylib.c>
 #include <sys/ioctl.h>
+#include <sys/socket.h>
 #include <unistd.h>
 #include "chat.h"
 #include "raylib.h"
@@ -162,9 +163,9 @@ static void add_connection(Connections* connections, Connection connection) {
     append_list(&connections->internal, &connection);
 }
 
-//Returns null if selected > connections.len
+// Returns null if selected > connections.len
 Connection* get_selected_connection(Connections connections) {
-    if (connections.internal.len == 0){
+    if (connections.internal.len == 0) {
         return NULL;
     }
     return get_list(connections.internal, connections.selected);
@@ -204,6 +205,19 @@ static void add_message_to_connection(Connection* connection, ClientMessage* mes
     append_list(&connection->messages.internal, message);
 }
 
+static bool update_connection_activity(AppModel* model, const ActivityMessage* activity) {
+    bool matched = false;
+    for (size_t i = 0; i < model->connections.internal.len; i++) {
+        Connection* connection = get_list(model->connections.internal, i);
+
+        if (strncmp(connection->dest, activity->ip, HEADER_ADDR_SIZE) == 0) {
+            connection->is_active = activity->active;
+            matched = true;
+        }
+    }
+    return matched;
+}
+
 static int update_connections(AppModel* model) {
     Messages incoming;
     while ((incoming = listen_for_messages(model->connections.server)).internal.len != 0) {
@@ -213,6 +227,20 @@ static int update_connections(AppModel* model) {
             Message* message = get_list(incoming.internal, i);
 
             switch (message->type) {
+            case ACTIVITY:
+                ActivityMessage* activity = &message->type_data.activity;
+                if (!update_connection_activity(model, activity)) {
+
+                    Connection c = {
+                        .is_active = activity->active,
+                        .messages = init_list(sizeof(Message), 0),
+                        .user_input = { },
+                    };
+                    memcpy(c.dest, activity->ip, HEADER_ADDR_SIZE);
+
+                    add_connection(&model->connections, c);
+                }
+                break;
             case MESSAGE:
                 client_message = &message->type_data.message;
                 Connection* connection = map_message_to_connection(model, client_message);
@@ -223,7 +251,7 @@ static int update_connections(AppModel* model) {
                 continue;
             case DISCONNECT:
                 printf("[CLIENT] Server disconnect message receieved\n");
-                return 1;
+                return -1;
                 break;
             }
         }

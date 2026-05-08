@@ -23,7 +23,9 @@
 #define HEADER_TYPE_SIZE 1
 #define HEADER_ADDR_SIZE INET_ADDRSTRLEN
 #define HEADER_LEN_SIZE 4
-#define HEADER_SIZE HEADER_LEN_SIZE + HEADER_ADDR_SIZE + HEADER_TYPE_SIZE
+#define HEADER_STATUS_SIZE sizeof(bool)
+#define MESSAGE_HEADER_SIZE HEADER_LEN_SIZE + HEADER_ADDR_SIZE + HEADER_TYPE_SIZE
+#define ACTIVITY_SIZE HEADER_TYPE_SIZE + HEADER_ADDR_SIZE + HEADER_STATUS_SIZE
 
 // Exit codes
 #define EXIT_SOCKET 1
@@ -43,19 +45,24 @@ typedef struct {
     enum { RECEIVE, SEND } type;
 
     // Holds destination when type is send, holds source when type is receive
-    char ip[INET_ADDRSTRLEN];
+    char ip[HEADER_ADDR_SIZE];
 } ClientMessage;
 
-typedef enum { MESSAGE = 1, INVALID = -1, DISCONNECT = 0} MessageType;
+typedef struct {
+    char ip[HEADER_ADDR_SIZE];
+    bool active;
+} ActivityMessage;
+
+typedef enum { ACTIVITY = 2, MESSAGE = 1, INVALID = -1, DISCONNECT = 0 } MessageType;
 
 typedef struct {
     MessageType type;
 
     union {
         ClientMessage message;
+        ActivityMessage activity;
     } type_data;
 } Message;
-
 
 typedef struct {
     void* data;
@@ -84,10 +91,11 @@ struct sockaddr_in configure_socket(void);
 
 // Send a HEADER prefixed message
 ssize_t send_message(int fd, const ClientMessage* message);
+bool send_activity(int fd, const ActivityMessage* message);
 
+int get_readable_ip(int fd, char* buf, size_t buf_len);
 // Receive a message
 Message receive_message(int fd);
-
 
 // Shutdown flag for signal handling
 extern volatile sig_atomic_t running;

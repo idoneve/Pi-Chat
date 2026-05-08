@@ -35,6 +35,22 @@ SignalResponse is_signal_ready(int max_fd, fd_set* read_fds) {
     return SIGNAL;
 }
 
+// Returns a char* to memory with len INET_ADDRSTRLEN or NULL
+int get_readable_ip(int fd, char* buf, size_t buf_len) {
+    if (buf_len != HEADER_ADDR_SIZE) {
+        printf("[Error] Incorrect buffer length or ip address");
+        return -1;
+    }
+
+    struct sockaddr_in addr;
+    socklen_t len = sizeof(addr);
+
+    getpeername(fd, (struct sockaddr*)&addr, &len);
+    inet_ntop(AF_INET, &addr.sin_addr, buf, (socklen_t)buf_len);
+
+    return 0;
+}
+
 // Allocates data if cap > 0
 List init_list(size_t data_size, size_t cap) {
     return (List) {
@@ -87,7 +103,8 @@ void setup_signal_handler(void) {
 }
 
 // Pack a message with length prefix, returns total bytes to send
-static ssize_t pack_message(const ClientMessage* message, char out_buf[HEADER_SIZE + MAX_MSG_LEN]) {
+static ssize_t pack_message(
+    const ClientMessage* message, char out_buf[MESSAGE_HEADER_SIZE + MAX_MSG_LEN]) {
     printf("\t[DEBUG] Packing %s\n", message->content.data);
     if (message->content.len > MAX_MSG_LEN) {
         printf("\t[DEBUG] message too big %s\n", message->content.data);
@@ -99,16 +116,23 @@ static ssize_t pack_message(const ClientMessage* message, char out_buf[HEADER_SI
     memcpy(out_buf + HEADER_TYPE_SIZE, message->ip, HEADER_ADDR_SIZE);
 
     uint32_t net_len = htonl((unsigned int)message->content.len);
-    memcpy(out_buf + HEADER_SIZE - HEADER_LEN_SIZE, &net_len, HEADER_LEN_SIZE);
-    memcpy(out_buf + HEADER_SIZE, message->content.data, message->content.len);
+    memcpy(out_buf + MESSAGE_HEADER_SIZE - HEADER_LEN_SIZE, &net_len, HEADER_LEN_SIZE);
+    memcpy(out_buf + MESSAGE_HEADER_SIZE, message->content.data, message->content.len);
 
-    return (ssize_t)(message->content.len + HEADER_SIZE);
+    return (ssize_t)(message->content.len + MESSAGE_HEADER_SIZE);
+}
+
+static void pack_activity(const ActivityMessage* message, char out_buf[ACTIVITY_SIZE]) {
+
+    out_buf[0] = ACTIVITY;
+    memcpy(out_buf + HEADER_TYPE_SIZE, message->ip, HEADER_ADDR_SIZE);
+    memcpy(out_buf + HEADER_TYPE_SIZE + HEADER_ADDR_SIZE, &message->active, sizeof(bool));
 }
 
 // Send a length-prefixed message
 ssize_t send_message(int fd, const ClientMessage* message) {
     printf("\t[DEBUG] sending message %s\n", message->content.data);
-    char packet[MAX_MSG_LEN + HEADER_SIZE];
+    char packet[MAX_MSG_LEN + MESSAGE_HEADER_SIZE];
     ssize_t total = pack_message(message, packet);
     if (total < 0)
         return -1;
@@ -120,11 +144,27 @@ ssize_t send_message(int fd, const ClientMessage* message) {
             return n;
         sent += n;
     }
-    return sent - HEADER_SIZE; // Payload bytes sent
+    return sent - MESSAGE_HEADER_SIZE; // Payload bytes sent
+}
+
+bool send_activity(int fd, const ActivityMessage* message) {
+    printf("\t[DEBUG] sending activity %s\n", message->ip);
+    char packet[ACTIVITY_SIZE];
+    pack_activity(message, packet);
+
+    size_t sent = 0;
+    while (sent < ACTIVITY_SIZE) {
+        ssize_t n = send(fd, packet + sent, ACTIVITY_SIZE - sent, 0);
+        if (n <= 0)
+            return false;
+        sent += (size_t)n;
+    }
+
+    return true; // Payload bytes sent
 }
 
 // Returns message type if disconnected or invalid or length of message content
-static ssize_t unpack_message(int fd, char buffer[HEADER_SIZE + MAX_MSG_LEN]) {
+static ssize_t unpack_message(int fd, char buffer[MESSAGE_HEADER_SIZE + MAX_MSG_LEN]) {
     printf("\t[DEBUG] Beginning unpack\n");
     ssize_t msg_len;
 
@@ -174,7 +214,7 @@ static ssize_t unpack_message(int fd, char buffer[HEADER_SIZE + MAX_MSG_LEN]) {
 
     printf("[DEBUG] message length %d received\n", msg_len);
 
-    char* msg_data = (buffer + HEADER_SIZE);
+    char* msg_data = (buffer + MESSAGE_HEADER_SIZE);
 
     // Read the actual message
     ssize_t total = 0;
@@ -196,7 +236,7 @@ static ssize_t unpack_message(int fd, char buffer[HEADER_SIZE + MAX_MSG_LEN]) {
 }
 
 Message receive_message(int fd) {
-    char buffer[MAX_MSG_LEN + HEADER_SIZE];
+    char buffer[MAX_MSG_LEN + MESSAGE_HEADER_SIZE];
     ssize_t len;
     switch (len = unpack_message(fd, buffer)) {
     case INVALID:
@@ -212,7 +252,7 @@ Message receive_message(int fd) {
         memcpy(message->ip, buffer + HEADER_TYPE_SIZE, HEADER_ADDR_SIZE);
         // Copy message content into message
         message->content.len = (size_t)len;
-        memcpy(message->content.data, buffer + HEADER_SIZE, (size_t)len);
+        memcpy(message->content.data, buffer + MESSAGE_HEADER_SIZE, (size_t)len);
 
         return result;
     }
