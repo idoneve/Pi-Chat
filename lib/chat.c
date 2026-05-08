@@ -249,6 +249,16 @@ Message receive_message(int fd) {
     case DISCONNECT:
         return (Message) { .type = DISCONNECT };
     case ACTIVITY:
+    default:
+        break;
+    }
+
+    Message result = {
+        .type = buffer[0],
+    };
+
+    switch (result.type) {
+    case ACTIVITY:
         ActivityMessage activity = {
             .active = *((bool*)(buffer + (ACTIVITY_SIZE - HEADER_STATUS_SIZE))),
         };
@@ -260,7 +270,7 @@ Message receive_message(int fd) {
         };
 
         return m;
-    default:
+    case MESSAGE:
         Message regular_message = { .type = MESSAGE };
         ClientMessage* message = &regular_message.type_data.message;
         message->type = RECEIVE;
@@ -272,5 +282,8 @@ Message receive_message(int fd) {
         memcpy(message->content.data, buffer + MESSAGE_HEADER_SIZE, (size_t)len);
 
         return regular_message;
+    default:
+        printf("Unreachable Branch Reached");
+        exit(1);
     }
 }
