@@ -303,34 +303,54 @@ static void connection_tab(size_t* selected, const TabModel* model) {
     Clay_Color background
         = (model->index == *selected) ? COLOR_SIDEBAR_TAB_ACTIVE : COLOR_SIDEBAR_TAB_INACTIVE;
 
-    CLAY({ .id = CLAY_IDI("ConnectionTab", (uint32_t)model->index),
+    CLAY({ 
+        .id = CLAY_IDI("ConnectionTab", (uint32_t)model->index),
         .backgroundColor = Clay_Hovered() ? COLOR_SIDEBAR_TAB_HOVERED : background,
         .cornerRadius = CLAY_CORNER_RADIUS(10),
-        .layout = { .layoutDirection = CLAY_LEFT_TO_RIGHT,
+        .layout = { 
+            .layoutDirection = CLAY_LEFT_TO_RIGHT,
             .padding = CLAY_PADDING_ALL(PADDING_SIDEBAR_TAB),
-            .sizing = { .width = CLAY_SIZING_PERCENT(1.0), .height = CLAY_SIZING_FIT() } } }) {
-
+            .sizing = { .width = CLAY_SIZING_PERCENT(1.0), .height = CLAY_SIZING_FIT() }, 
+            .childAlignment = {
+                .y = CLAY_ALIGN_Y_CENTER,
+            }
+        }, 
+    }) {
         if (Clay_Hovered() && IsMouseButtonPressed(MOUSE_LEFT_BUTTON)) {
             (*selected) = model->index;
         }
 
-        CLAY_TEXT(((Clay_String) { .chars = model->title,
-                      .length = (int32_t)strnlen(model->title, INET_ADDRSTRLEN),
-                      .isStaticallyAllocated = false }),
-            CLAY_TEXT_CONFIG({
-                .textColor = COLOR_SIDEBAR_TAB_TEXT,
-                .fontSize = SIZE_TAB_FONT,
-                .fontId = ID_TAB_FONT,
-                .letterSpacing = SPACING_TAB_FONT,
-            }));
+        CLAY({ 
+                .id = CLAY_IDI("ConnectionLabel", (uint32_t)model->index),
+                .layout = { 
+                    .sizing = {
+                        .width = CLAY_SIZING_GROW(0),
+                        .height = CLAY_SIZING_FIT(),
+                    }, 
+                }, 
+            }) {
+            CLAY_TEXT(((Clay_String) { .chars = model->title,
+                          .length = (int32_t)strnlen(model->title, INET_ADDRSTRLEN),
+                          .isStaticallyAllocated = false }),
+                CLAY_TEXT_CONFIG({
+                    .textColor = COLOR_SIDEBAR_TAB_TEXT,
+                    .fontSize = SIZE_TAB_FONT,
+                    .fontId = ID_TAB_FONT,
+                    .letterSpacing = SPACING_TAB_FONT,
+                }));
+        }
 
         Clay_Color status_background = model->is_active ? COLOR_SIDEBAR_TAB_ACTIVE_CONNECTION
                                                         : COLOR_SIDEBAR_TAB_INACTIVE_CONNECTION;
         CLAY({
             .id = CLAY_IDI("StatusCircle", (uint32_t)model->index),
-            .cornerRadius = CLAY_CORNER_RADIUS(.5),
-            .layout = { .sizing = { .width = CLAY_SIZING_FIXED(SIZE_SIDEBAR_TAB_STATUS),
-                            .height = CLAY_SIZING_FIXED(SIZE_SIDEBAR_TAB_STATUS) } },
+            .cornerRadius = CLAY_CORNER_RADIUS(CORNER_RADIUS_STATUS_INDICATOR),
+            .layout = { 
+                .sizing = { 
+                    .width = CLAY_SIZING_FIXED(SIZE_SIDEBAR_TAB_STATUS),
+                    .height = CLAY_SIZING_FIXED(SIZE_SIDEBAR_TAB_STATUS),
+                }, 
+            },
             .backgroundColor = status_background,
         });
     }
@@ -377,27 +397,6 @@ void side_bar(AppModel* model) {
                 connection_tab(&model->connections.selected, &model->tabs.data[i]);
             }
         }
-
-        CLAY({ .id = CLAY_ID("AddButton"),
-            .cornerRadius = CLAY_CORNER_RADIUS(CORNER_RADIUS_ADD_BUTTON),
-            .layout = { 
-                .sizing = {
-                    .width = CLAY_SIZING_GROW(0),
-                    .height = CLAY_SIZING_PERCENT(0.05F),
-                },
-                .childAlignment = {.x = CLAY_ALIGN_X_CENTER, .y  = CLAY_ALIGN_Y_CENTER}
-            },
-            .backgroundColor = COLOR_SIDEBAR_ADD_BUTTON}) {
-            if (Clay_Hovered() && IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) { }
-
-            CLAY_TEXT(CLAY_STRING("Add Connection"),
-                CLAY_TEXT_CONFIG({
-                    .textColor = COLOR_SIDEBAR_ADD_BUTTON_TEXT,
-                    .textAlignment = CLAY_TEXT_ALIGN_CENTER,
-                    .fontSize = SIZE_SIDEBAR_ADD_BUTTON_FONT,
-                }));
-        }
-
         // Standard C code like loops etc work inside components
     }
 }
