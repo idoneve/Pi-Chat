@@ -15,8 +15,6 @@ ifeq ($(shell uname -s),Darwin)
   CFLAGS = -D_FORTIFY_SOURCE=2 -fstack-protector-all -g -$(OPTIMIZER) -std=$(CSTD) \
          -Wall -Wextra -Wpedantic -Wshadow -Winit-self -Wpointer-arith \
          -Wcast-qual -D_POSIX_C_SOURCE=200809L
-  LDFLAGS = -framework OpenGL -framework Cocoa -framework IOKit \
-            -framework CoreFoundation -framework CoreVideo
   RAYLIB = ./lib/raylib-5.5_macos/libraylib.a
 else
   ifeq ($(shell uname -m),x86_64)
@@ -32,9 +30,11 @@ else
     RAYLIB = ./lib/raylib-5.5_linux_amd64/libraylib.a
   else ifeq ($(shell uname -m),aarch64)
     CC = gcc
+
     CFLAGS = -D_FORTIFY_SOURCE=2 -fstack-protector-all -g -$(OPTIMIZER) -std=$(CSTD) \
     		-Wall -Wextra -Wpedantic -Wshadow -Winit-self -Wpointer-arith \
     		-Wcast-qual -D_POSIX_C_SOURCE=200809L
+
     RAYLIB = ./lib/raylib-5.5_linux_aarch64/libraylib.a 
   endif
 endif
@@ -48,15 +48,16 @@ OBJ = $(SRC:.c=.o)
 # Headers
 LOCAL_INCLUDE = ./include/
 
-SHARED_LIBRARY = ../lib/chat.a
+SHARED_LIBRARY = ./lib/chat.a
 SHARED_SRC = ../lib/chat.c
 SHARED_INCLUDE = ../include/
 
-all: $(TARGET)
+all: reset $(TARGET) clean
 
 # Link
 $(TARGET): $(SHARED_LIBRARY) $(OBJ) | bin
-	$(CC) $(CFLAGS) $(OBJ) $(SHARED_LIBRARY) $(LDFLAGS) $(RAYLIB) -o $(TARGET) -lm  -I$(SHARED_INCLUDE) -I$(LOCAL_INCLUDE)
+	$(CC) $(CFLAGS) $(OBJ) $(SHARED_LIBRARY) $(RAYLIB) -o $(TARGET) -lm  -I$(SHARED_INCLUDE) -I$(LOCAL_INCLUDE)
+	rm -f $(OBJ)
 
 $(SHARED_LIBRARY): $(SHARED_SRC)
 	$(CC) $(CFLAGS) -c $< -o $@ -I $(SHARED_INCLUDE)
@@ -71,7 +72,10 @@ bin:
 run_client: $(TARGET)
 	./$(TARGET) $(IP_ADDRESS)
 
+reset:
+	rm -rf bin lib
+
 clean:
-	rm -rf $(OBJ) $(SHARED_LIBRARY) bin
+	rm -f $(OBJ) $(SHARED_LIBRARY)
 
 .PHONY: all run_client clean reset
