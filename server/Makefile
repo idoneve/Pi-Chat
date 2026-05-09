@@ -62,6 +62,6 @@ clean:
 	rm -f $(SHARED_LIBRARY)
 	
 reset:
-	rm -rf ./bin/
+	rm -rf ./bin/ ./lib/
 
 .PHONY: all run_server clean reset

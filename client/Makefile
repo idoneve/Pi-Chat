@@ -73,7 +73,7 @@ run_client: $(TARGET)
 	./$(TARGET) $(IP_ADDRESS)
 
 reset:
-	rm -rf bin
+	rm -rf bin lib
 
 clean:
 	rm -f $(OBJ) $(SHARED_LIBRARY)
