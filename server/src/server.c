@@ -236,6 +236,7 @@ static void check_for_messages(Connections* connections, fd_set* read_fds) {
             printf("\t[Server] Client (fd %d) has disconnected\n", connection->fd);
             connection->active = false;
             close(connection->fd);
+            notify_clients(connections); // notify in case disconnects happened
             return;
         case MESSAGE:
             break;
@@ -254,8 +255,6 @@ static void check_for_messages(Connections* connections, fd_set* read_fds) {
         printf("\t[Server] The message %s of size %zd has been broadcasted\n",
             client_message->content.data, client_message->content.len);
     }
-
-    notify_clients(connections); // notify in case disconnects happened
 }
 
 int main(void) {
