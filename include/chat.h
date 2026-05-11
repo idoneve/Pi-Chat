@@ -23,7 +23,9 @@
 #define HEADER_TYPE_SIZE 1
 #define HEADER_ADDR_SIZE INET_ADDRSTRLEN
 #define HEADER_LEN_SIZE 4
-#define HEADER_SIZE HEADER_LEN_SIZE + HEADER_ADDR_SIZE + HEADER_TYPE_SIZE
+#define HEADER_STATUS_SIZE sizeof(bool)
+#define MESSAGE_HEADER_SIZE HEADER_LEN_SIZE + HEADER_ADDR_SIZE + HEADER_TYPE_SIZE
+#define ACTIVITY_SIZE HEADER_TYPE_SIZE + HEADER_ADDR_SIZE + HEADER_STATUS_SIZE
 
 // Exit codes
 #define EXIT_SOCKET 1
@@ -36,37 +38,46 @@
 typedef struct {
     // Message data
     struct {
-        char* data;
+        char data[MAX_MSG_LEN];
         size_t len;
     } content;
 
     enum { RECEIVE, SEND } type;
 
     // Holds destination when type is send, holds source when type is receive
-    char ip[INET_ADDRSTRLEN];
+    char ip[HEADER_ADDR_SIZE];
 } ClientMessage;
 
-typedef enum { MESSAGE = 1, INVALID = -1, DISCONNECT = 0} MessageType;
+typedef struct {
+    char ip[HEADER_ADDR_SIZE];
+    bool active;
+} ActivityMessage;
+
+typedef enum { ACTIVITY = 2, MESSAGE = 1, INVALID = -1, DISCONNECT = 0 } MessageType;
 
 typedef struct {
     MessageType type;
 
     union {
         ClientMessage message;
+        ActivityMessage activity;
     } type_data;
 } Message;
 
 typedef struct {
-    char ip[INET_ADDRSTRLEN];
-    int fd;
-    bool active;
-} Connection;
-
-typedef struct {
-    Connection* data;
+    void* data;
+    size_t data_size;
     size_t len;
     size_t cap;
-} Connections;
+} List;
+
+List init_list(size_t data_size, size_t cap);
+
+void deinit_list(List*);
+
+// Copies data into list by value
+void append_list(List*, const void* data);
+void* get_list(List, size_t n);
 
 typedef enum {
     FD_ERROR,
@@ -80,17 +91,11 @@ struct sockaddr_in configure_socket(void);
 
 // Send a HEADER prefixed message
 ssize_t send_message(int fd, const ClientMessage* message);
+bool send_activity(int fd, const ActivityMessage* message);
 
+int get_readable_ip(int fd, char* buf, size_t buf_len);
 // Receive a message
 Message receive_message(int fd);
-
-Connections init_connections(void);
-
-void deinit_connections(Connections* connections);
-
-void add_connection(Connections* connections, Connection connection);
-
-bool reactivate_connection(Connections* connections, Connection incoming);
 
 // Shutdown flag for signal handling
 extern volatile sig_atomic_t running;

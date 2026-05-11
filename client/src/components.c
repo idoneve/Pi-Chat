@@ -85,7 +85,60 @@ static size_t empty_buffer(char* data, size_t len) {
     return 0;
 }
 
-static void handle_text_input(ClientConnection* selected) {
+static ClientMessage message_from_input(Connection* connection) {
+    ClientMessage c = (ClientMessage){
+        .content = {
+            .len = connection->user_input.len,
+        }, 
+        .type = SEND,
+    };
+
+    strncpy(c.content.data, connection->user_input.data, connection->user_input.len);
+    strncpy(c.ip, connection->dest, HEADER_ADDR_SIZE);
+    return c;
+}
+
+static int send_user_input(Connections connections) {
+    Connection* connection = get_selected_connection(connections);
+    if (connection == NULL) {
+        return -1;
+    }
+
+    if (connection->user_input.len == 0) {
+        return 0;
+    }
+
+    ClientMessage message = message_from_input(connection);
+
+    append_list(&connection->messages.internal, &message);
+
+    if (send_message(connections.server,
+            get_list(connection->messages.internal, connection->messages.internal.len - 1))
+        < 0) {
+        return -1;
+    }
+    connection->user_input.len
+        = empty_buffer(connection->user_input.data, connection->user_input.len);
+    return 0;
+}
+
+static void handle_text_input(Connections connections) {
+    Connection* selected = get_selected_connection(connections);
+    if (selected == NULL) {
+        return;
+    }
+
+    const char* inactive_msg = "Connection Disconnected Input No Longer Allowed";
+    size_t len = strlen(inactive_msg);
+    if (!selected->is_active) {
+        memcpy(selected->user_input.data, inactive_msg, len);
+        selected->user_input.len = len;
+        return;
+    } else if (strcmp(inactive_msg, selected->user_input.data) == 0) {
+        selected->user_input.data[0] = '\0';
+        selected->user_input.len = 0;
+    }
+
     char* user_input = selected->user_input.data;
     size_t* input_len = &selected->user_input.len;
     size_t* cursor = &selected->user_input.cursor;
@@ -105,6 +158,8 @@ static void handle_text_input(ClientConnection* selected) {
 
         case KEY_ENTER:
             // TODO - send user data
+
+            send_user_input(connections);
             *input_len = empty_buffer(user_input, *input_len);
             break;
 
@@ -145,11 +200,10 @@ static void message_entry(AppModel* model) {
         .border = {.width = CLAY_BORDER_OUTSIDE(5), .color = COLOR_LIGHT},
         .clip = {.vertical = true, .horizontal = false, .childOffset = Clay_GetScrollOffset()}
     }) {
-        if (model->connections.len != 0) {
-            ClientConnection* selected = &model->connections.data[model->connections.selected];
+        handle_text_input(model->connections);
 
-            handle_text_input(selected);
-
+        Connection* selected = get_selected_connection(model->connections);
+        if (selected != NULL) {
             // TODO handle cursor rendering
             CLAY_TEXT(((Clay_String) {
                           .chars = selected->user_input.data,
@@ -159,7 +213,6 @@ static void message_entry(AppModel* model) {
                 CLAY_TEXT_CONFIG({
                     .textAlignment = CLAY_TEXT_ALIGN_LEFT,
                     .textColor = COLOR_CHAT_USER_INPUT_TEXT,
-                    .wrapMode = CLAY_TEXT_WRAP_WORDS,
                     .fontId = ID_CHAT_USER_INPUT_FONT,
                     .fontSize = SIZE_CHAT_USER_INPUT_FONT,
                     .letterSpacing = SPACING_CHAT_USER_INPUT_FONT,
@@ -186,12 +239,11 @@ static void submit_button(AppModel* model) {
         .cornerRadius = CLAY_CORNER_RADIUS(CORNER_RADIUS_CHAT_SUBMIT_BUTTON),
     }){
 
-            if (Clay_Hovered() && IsMouseButtonPressed(MOUSE_BUTTON_LEFT)
-                && model->connections.len != 0) {
-                ClientConnection* selected = &model->connections.data[model->connections.selected];
-
-                // TODO send message
-                selected->user_input.len = 0;
+            Connection* selected = get_selected_connection(model->connections);
+            if (Clay_Hovered() && IsMouseButtonPressed(MOUSE_BUTTON_LEFT) && selected != NULL) {
+                if (send_user_input(model->connections) < 0) {
+                    printf("\t[CLIENT] [UI] Failed to send user input\n");
+                }
             }
 
             CLAY_TEXT(CLAY_STRING("Send"),
@@ -222,12 +274,11 @@ void chat_window(AppModel* model) {
                 .layoutDirection = CLAY_TOP_TO_BOTTOM,
                 .childAlignment = { .y = CLAY_ALIGN_Y_TOP } } }) {
 
-            if (model->connections.len != 0) {
-                ClientConnection* active_connection
-                    = &model->connections.data[model->connections.selected];
-
-                for (size_t i = 0; i < active_connection->messages.len; i++) {
-                    chat_message(i, &active_connection->messages.data[i]);
+            Connection* active_connection = get_selected_connection(model->connections);
+            if (active_connection != NULL) {
+                for (size_t i = 0; i < active_connection->messages.internal.len; i++) {
+                    ClientMessage* m = get_list(active_connection->messages.internal, i);
+                    chat_message(i, m);
                 }
             }
         }
@@ -252,49 +303,68 @@ static void connection_tab(size_t* selected, const TabModel* model) {
     Clay_Color background
         = (model->index == *selected) ? COLOR_SIDEBAR_TAB_ACTIVE : COLOR_SIDEBAR_TAB_INACTIVE;
 
-    CLAY({ .id = CLAY_IDI("ConnectionTab", (uint32_t)model->index),
+    CLAY({ 
+        .id = CLAY_IDI("ConnectionTab", (uint32_t)model->index),
         .backgroundColor = Clay_Hovered() ? COLOR_SIDEBAR_TAB_HOVERED : background,
         .cornerRadius = CLAY_CORNER_RADIUS(10),
-        .layout = { .layoutDirection = CLAY_LEFT_TO_RIGHT,
+        .layout = { 
+            .layoutDirection = CLAY_LEFT_TO_RIGHT,
             .padding = CLAY_PADDING_ALL(PADDING_SIDEBAR_TAB),
-            .sizing = { .width = CLAY_SIZING_PERCENT(1.0), .height = CLAY_SIZING_FIT() } } }) {
-
+            .sizing = { .width = CLAY_SIZING_PERCENT(1.0), .height = CLAY_SIZING_FIT() }, 
+            .childAlignment = {
+                .y = CLAY_ALIGN_Y_CENTER,
+            }
+        }, 
+    }) {
         if (Clay_Hovered() && IsMouseButtonPressed(MOUSE_LEFT_BUTTON)) {
             (*selected) = model->index;
         }
 
-        CLAY_TEXT(((Clay_String) { .chars = model->title,
-                      .length = (int32_t)strnlen(model->title, INET_ADDRSTRLEN),
-                      .isStaticallyAllocated = false }),
-            CLAY_TEXT_CONFIG({
-                .textColor = COLOR_SIDEBAR_TAB_TEXT,
-                .fontSize = SIZE_TAB_FONT,
-                .fontId = ID_TAB_FONT,
-                .letterSpacing = SPACING_TAB_FONT,
-            }));
+        CLAY({ 
+                .id = CLAY_IDI("ConnectionLabel", (uint32_t)model->index),
+                .layout = { 
+                    .sizing = {
+                        .width = CLAY_SIZING_GROW(0),
+                        .height = CLAY_SIZING_FIT(),
+                    }, 
+                }, 
+            }) {
+            CLAY_TEXT(((Clay_String) { .chars = model->title,
+                          .length = (int32_t)strnlen(model->title, INET_ADDRSTRLEN),
+                          .isStaticallyAllocated = false }),
+                CLAY_TEXT_CONFIG({
+                    .textColor = COLOR_SIDEBAR_TAB_TEXT,
+                    .fontSize = SIZE_TAB_FONT,
+                    .fontId = ID_TAB_FONT,
+                    .letterSpacing = SPACING_TAB_FONT,
+                }));
+        }
 
         Clay_Color status_background = model->is_active ? COLOR_SIDEBAR_TAB_ACTIVE_CONNECTION
                                                         : COLOR_SIDEBAR_TAB_INACTIVE_CONNECTION;
         CLAY({
             .id = CLAY_IDI("StatusCircle", (uint32_t)model->index),
-            .cornerRadius = CLAY_CORNER_RADIUS(.5),
-            .layout = { .sizing = { .width = CLAY_SIZING_FIXED(SIZE_SIDEBAR_TAB_STATUS),
-                            .height = CLAY_SIZING_FIXED(SIZE_SIDEBAR_TAB_STATUS) } },
+            .cornerRadius = CLAY_CORNER_RADIUS(CORNER_RADIUS_STATUS_INDICATOR),
+            .layout = { 
+                .sizing = { 
+                    .width = CLAY_SIZING_FIXED(SIZE_SIDEBAR_TAB_STATUS),
+                    .height = CLAY_SIZING_FIXED(SIZE_SIDEBAR_TAB_STATUS),
+                }, 
+            },
             .backgroundColor = status_background,
         });
     }
 }
 
 void side_bar(AppModel* model) {
-    CLAY({ .id = CLAY_ID("SideBar"),
+    CLAY({
+        .id = CLAY_ID("SideBar"),
         .layout = { .layoutDirection = CLAY_TOP_TO_BOTTOM,
             .sizing = { .width = CLAY_SIZING_PERCENT(0.25), .height = CLAY_SIZING_GROW(0) },
             .padding = CLAY_PADDING_ALL(PADDING_SIDEBAR_OUTER),
-            .childGap = GAP_SIDEBAR_INNER },
+            .childGap = GAP_SIDEBAR_OUTER },
         .backgroundColor = COLOR_SIDEBAR_BACKGROUND,
-
-        // Enable Scrolling
-        .clip = { .vertical = true, .childOffset = Clay_GetScrollOffset() } }) {
+    }) {
 
         CLAY({ .id = CLAY_ID("Title"),
             .layout = { .sizing = { .width = CLAY_SIZING_GROW(0) },
@@ -309,9 +379,24 @@ void side_bar(AppModel* model) {
                     .textColor = COLOR_SIDEBAR_TITLE_TEXT }));
         }
 
-        // Standard C code like loops etc work inside components
-        for (size_t i = 0; i < model->tabs.len; i++) {
-            connection_tab(&model->connections.selected, &model->tabs.data[i]);
+        CLAY({ .id = CLAY_ID("Tabs"),
+            .layout = { .layoutDirection = CLAY_TOP_TO_BOTTOM,
+                .childAlignment = { .x = CLAY_ALIGN_X_CENTER, .y = CLAY_ALIGN_Y_TOP },
+                .padding = CLAY_PADDING_ALL(PADDING_SIDEBAR_INNER),
+                .sizing = {
+                    .width = CLAY_SIZING_GROW(0),
+                    .height = CLAY_SIZING_GROW(0),
+                },
+            },
+            .clip = { .vertical = true, .childOffset = Clay_GetScrollOffset() } ,
+            .border = {
+                .width = CLAY_BORDER_OUTSIDE(WIDTH_SIDEBAR_TABS_BORDER), 
+                .color = COLOR_SIDEBAR_TABS_BORDER}}) {
+
+            for (size_t i = 0; i < model->tabs.len; i++) {
+                connection_tab(&model->connections.selected, &model->tabs.data[i]);
+            }
         }
+        // Standard C code like loops etc work inside components
     }
 }

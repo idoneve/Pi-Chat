@@ -10,6 +10,42 @@
 
 volatile sig_atomic_t running = 1;
 
+typedef struct {
+    char ip[HEADER_ADDR_SIZE];
+    int fd;
+    bool active;
+} Connection;
+
+typedef struct {
+    List internal;
+} Connections;
+
+static Connections init_connections(void) {
+    return (Connections) { .internal = init_list(sizeof(Connection), MAX_CONNECTIONS) };
+}
+
+static void deinit_connections(Connections* connections) { deinit_list(&connections->internal); }
+
+static void add_connection(Connections* connections, Connection connection) {
+    append_list(&connections->internal, &connection);
+}
+
+static bool reactivate_connection(Connections* connections, Connection incoming) {
+    for (size_t i = 0; i < connections->internal.len; i++) {
+        Connection* existing = get_list(connections->internal, i);
+
+        if (existing->active)
+            continue;
+
+        if (strcmp(existing->ip, incoming.ip) == 0) {
+            *existing = incoming;
+
+            return true;
+        }
+    }
+    return false;
+}
+
 static void bind_socket(int server_fd) {
     printf("\t[Server] Binding socket...\n");
     struct sockaddr_in addr = configure_socket();
@@ -71,32 +107,36 @@ static int load_connections(int server_fd, Connections* connections, fd_set* rea
 
     FD_SET(server_fd, read_fds); // Load server into reader
     int max_fd = server_fd;
-    for (size_t i = 0; i < connections->len; ++i) {
-        if (!connections->data[i].active)
+    for (size_t i = 0; i < connections->internal.len; ++i) {
+        Connection* connection = get_list(connections->internal, i);
+        if (!connection->active)
             continue;
 
-        FD_SET(connections->data[i].fd, read_fds); // Load clients into reader
-        if (connections->data[i].fd > max_fd) {
-            max_fd = connections->data[i].fd;
+        FD_SET(connection->fd, read_fds); // Load clients into reader
+        if (connection->fd > max_fd) {
+            max_fd = connection->fd;
         }
     }
     return max_fd;
 }
 
-// Returns a char* to memory with len INET_ADDRSTRLEN or NULL
-static int get_readable_ip(int fd, char* buf, size_t buf_len) {
-    if (buf_len != INET_ADDRSTRLEN) {
-        printf("[Error] Incorrect buffer length or ip address");
-        return -1;
+// Broadcast connection status updates to all clients
+static void notify_clients(const Connections* connections) {
+    printf("\t[Server] Notify Clients\n");
+    for (size_t i = 0; i < connections->internal.len; i++) {
+        Connection* c1 = get_list(connections->internal, i);
+        for (size_t j = (i + 1) % connections->internal.len; i != j;
+            j = (j + 1) % connections->internal.len) {
+            Connection* c2 = get_list(connections->internal, j);
+
+            ActivityMessage activity = {
+                .active = c2->active,
+            };
+            memcpy(activity.ip, c2->ip, HEADER_ADDR_SIZE);
+
+            send_activity(c1->fd, &activity);
+        }
     }
-
-    struct sockaddr_in addr;
-    socklen_t len = sizeof(addr);
-
-    getpeername(fd, (struct sockaddr*)&addr, &len);
-    inet_ntop(AF_INET, &addr.sin_addr, buf, (socklen_t)buf_len);
-
-    return 0;
 }
 
 typedef enum {
@@ -129,8 +169,10 @@ static AcceptError accept_clients(int server_fd, Connections* connections, fd_se
         if (!reactivate_connection(connections, c)) {
             add_connection(connections, c);
         }
+        notify_clients(connections);
 
-        printf("\t[Server] Client connection accepted (fd %d: ip %s)\n", client_fd, c.ip);
+        printf("\t[Server] Client connection accepted (fd %d: ip %s). Total Connections: %d\n",
+            client_fd, c.ip, connections->internal.len);
         return NONE;
     }
 }
@@ -143,73 +185,77 @@ static int route_message(
         return -1;
     }
 
-    // TODO ROUTE MESSAGES
-    ssize_t destination = -1;
-    for (size_t i = 0; i < connections->len; i++) {
-        if (strncmp(message->ip, connections->data[i].ip, INET_ADDRSTRLEN) == 0) {
-            destination = (ssize_t)i;
+    Connection* destination = NULL;
+    for (size_t i = 0; i < connections->internal.len; i++) {
+        Connection* connection = get_list(connections->internal, i);
+        if (strncmp(message->ip, connection->ip, HEADER_ADDR_SIZE) == 0) {
+            destination = connection;
             break;
         }
     }
 
-    if (destination < 0) {
-        printf("[ERROR] Unkown destination address provided");
-        return (int)destination;
+    if (destination == NULL) {
+        printf("[ERROR] Unkown destination address provided: %s", message->ip);
+        return -1;
     }
 
     // set destination to source
-    memcpy(message->ip, connections->data[destination].ip, sizeof(message->ip));
+    memcpy(message->ip, source->ip, sizeof(message->ip));
 
     // Broadcast message to routed client
-    if (send_message(connections->data[destination].fd, message) < 0) {
+    if (send_message(destination->fd, message) < 0) {
         perror("[ERROR] Could not broadcast message\n");
         return -1;
     }
 
-    printf("\t[Server] Broadcasted message from fd %d to fd %d\n", source->fd,
-        connections->data[destination].fd);
+    printf("\t[Server] Broadcasted message from fd %d to fd %d\n", source->fd, destination->fd);
 
     return 0;
 }
 
 static void check_for_messages(Connections* connections, fd_set* read_fds) {
-    for (size_t i = 0; i < connections->len; ++i) {
-        if (!connections->data[i].active)
+    for (size_t i = 0; i < connections->internal.len; ++i) {
+        Connection* connection = get_list(connections->internal, i);
+        if (!connection->active)
             continue;
 
-        if (!FD_ISSET(connections->data[i].fd, read_fds))
+        if (!FD_ISSET(connection->fd, read_fds))
             // Connection has no new messages
             continue;
 
-        printf("\t[Server] Client (fd %d) is sending a signal...\n", connections->data[i].fd);
+        printf("\t[Server] Client (fd %d) is sending a signal...\n", connection->fd);
 
-        char buf[HEADER_SIZE + MAX_MSG_LEN];
+        char buf[MESSAGE_HEADER_SIZE + MAX_MSG_LEN];
 
-        Message message = receive_message(connections->data[i].fd);
+        Message message = receive_message(connection->fd);
         switch (message.type) {
         case INVALID:
             printf("Error: Malinformed Message Received");
             return;
         case DISCONNECT:
-            printf("\t[Server] Client (fd %d) has disconnected\n", connections->data[i].fd);
-            connections->data[i].active = false;
-            close(connections->data[i].fd);
+            printf("\t[Server] Client (fd %d) has disconnected\n", connection->fd);
+            connection->active = false;
+            close(connection->fd);
             return;
         case MESSAGE:
             break;
+        case ACTIVITY:
+            printf("\t[SERVER] [ERROR] Activity Message Received from client");
+            return;
         }
 
         ClientMessage* client_message = &message.type_data.message;
 
-        if (route_message(&connections->data[i], connections, client_message) < 0) {
+        if (route_message(connection, connections, client_message) < 0) {
             printf("[SERVER] failed to route message");
             continue;
         }
 
         printf("\t[Server] The message %s of size %zd has been broadcasted\n",
-                client_message->content.data,
-            client_message->content.len);
+            client_message->content.data, client_message->content.len);
     }
+
+    notify_clients(connections); // notify in case disconnects happened
 }
 
 int main(void) {

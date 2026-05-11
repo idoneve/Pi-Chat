@@ -30,14 +30,16 @@ typedef struct {
     Font fonts[2];
 } AppResources;
 
-// Represents a connection
+typedef struct{
+    List internal;  
+} Messages;
+
+typedef struct{
+    List internal;  
+} ClientMessages;
+
 typedef struct {
-    // Messages
-    struct {
-        ClientMessage* data;
-        size_t len;
-        size_t cap;
-    } messages;
+    ClientMessages messages;
 
     struct {
         char data[MAX_MSG_LEN + 1];
@@ -48,27 +50,32 @@ typedef struct {
     // Readable name of ip destination
     char dest[INET_ADDRSTRLEN];
     bool is_active;
-} ClientConnection;
+} Connection;
+
+typedef struct {
+    List internal;
+    size_t selected;
+    int server;
+} Connections;
 
 // Contains things necessary to create ui
 typedef struct {
-    struct {
-        ClientConnection* data;
-        size_t len;
-        size_t cap;
-        size_t selected;
-    } connections;
+
+    Connections connections;
+
     struct {
         TabModel* data;
         size_t len;
     } tabs;
 } AppModel;
 
+Connection* get_selected_connection(Connections c);
+
 Clay_RenderCommandArray get_layout(const AppResources* resources, AppModel* model);
 
 void update_app_state(AppState* state);
 
-void update_app_model(int socket_fd, AppModel* model);
+void update_app_model(AppModel* model);
 
 AppState initialize_app(Font* fonts);
 
@@ -83,6 +90,6 @@ void draw_app(Clay_RenderCommandArray render_commands, AppResources* resources);
 
 void HandleClayErrors(Clay_ErrorData);
 
-AppModel init_app_model(void);
+AppModel init_app_model(int fd);
 
 void deinit_app_model(AppModel*);
