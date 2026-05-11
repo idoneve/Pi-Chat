@@ -383,6 +383,7 @@ void side_bar(AppModel* model) {
             .layout = { .layoutDirection = CLAY_TOP_TO_BOTTOM,
                 .childAlignment = { .x = CLAY_ALIGN_X_CENTER, .y = CLAY_ALIGN_Y_TOP },
                 .padding = CLAY_PADDING_ALL(PADDING_SIDEBAR_INNER),
+                .childGap = GAP_SIDEBAR_TAB,
                 .sizing = {
                     .width = CLAY_SIZING_GROW(0),
                     .height = CLAY_SIZING_GROW(0),
