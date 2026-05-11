@@ -14,7 +14,9 @@ ifeq ($(shell uname -s),Darwin)
   CC = clang
   CFLAGS = -D_FORTIFY_SOURCE=2 -fstack-protector-all -g -$(OPTIMIZER) -std=$(CSTD) \
          -Wall -Wextra -Wpedantic -Wshadow -Winit-self -Wpointer-arith \
-         -Wcast-qual -D_POSIX_C_SOURCE=200809L
+         -Wcast-qual -D_POSIX_C_SOURCE=200809L -framework OpenGL \
+         -framework Cocoa -framework IOKit -framework CoreFoundation \
+         -framework CoreVideo
   RAYLIB = ./lib/raylib-5.5_macos/libraylib.a
 else
   ifeq ($(shell uname -m),x86_64)
@@ -73,7 +75,7 @@ run_client: $(TARGET)
 	./$(TARGET) $(IP_ADDRESS)
 
 reset:
-	rm -rf bin lib
+	rm -rf bin
 
 clean:
 	rm -f $(OBJ) $(SHARED_LIBRARY)
